@@ -1,7 +1,14 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "example_id": "example_01",
   "task": "planting_evidence_boundary_delineation",
+  "example_role": "visual_interpretation_crop",
+  "source_context": {
+    "source_type": "crop_from_large_drone_orthomosaic",
+    "full_orthomosaic_available": false,
+    "georeferenced_crop": false,
+    "usage": "ใช้สอนหลักการตีความ Include / Exclude / Uncertain เท่านั้น"
+  },
   "input_image": "input.jpg",
   "expected_overlay": "expected_overlay.jpg",
   "expected_boundary": "expected_boundary_pixel.json",
@@ -18,6 +25,13 @@
       "พื้นที่ไม่มีร่องรอยปลูก"
     ],
     "special_case": "รักษารอยเว้าด้านซ้ายกลาง ไม่ใช้ Convex Hull ปิดทับ"
+  },
+  "production_requirements": {
+    "expected_input": "georeferenced GeoTIFF, COG or VRT",
+    "processing_mode": "overview plus overlapping windows",
+    "pixel_coordinates_are_geographic": false,
+    "must_transform_results_to_source_crs": true,
+    "must_support_large_raster": true
   },
   "review": {
     "status": "example_only",
