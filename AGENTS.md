@@ -2,135 +2,144 @@
 
 ## Repository Purpose
 
-Repository นี้ใช้พัฒนา Workflow สำหรับเสนอขอบเขตพื้นที่ที่พบร่องรอยการปลูกจากภาพโดรนหรือ Orthomosaic ขนาดใหญ่
+Repository นี้ใช้พัฒนาและควบคุม Workflow วิเคราะห์แปลงปลูกเสริมจากภาพโดรนหรือ Orthomosaic ขนาดใหญ่
+
+ผลลัพธ์เป็น Candidate Evidence จากภาพ ต้องผ่าน Human Review และไม่ใช่ขอบเขตตามกฎหมาย
+
+## Start Here
+
+ก่อนทำงานทุกครั้งให้อ่าน:
+
+1. `README.md`
+2. `skills/README.md`
+3. Skill เฉพาะงานที่ถูกเรียก
+
+งานครบทั้งกระบวนการให้เริ่มจาก:
+
+`skills/00-enrichment-analysis-orchestrator/SKILL.md`
+
+## Skill Separation Rule
+
+ห้ามรวมหน้าที่ของ Skill โดยไม่จำเป็น:
+
+- Skill 01 อ่าน Raster และแบ่ง Tile แต่ไม่จำแนกพืช
+- Skill 02 จำแนกสิ่งปกคลุมแต่ไม่สร้างขอบเขต
+- Skill 03 ตรวจโกงกาง Candidate แต่ไม่ยืนยันว่าเกิดจากการปลูก
+- Skill 04 ตรวจวัชพืชและการบดบัง
+- Skill 05 ตรวจต้นจาก
+- Skill 06 ตรวจป่าเดิม เงา และเรือนยอดปิด
+- Skill 07 วิเคราะห์ช่องว่างปลูกเสริม
+- Skill 08 สร้าง Candidate Boundary จากหลักฐานที่มีแล้ว
+- Skill 09 ตรวจ QA และเตรียม Human Review
+
+หากต้องใช้หลาย Skill ให้เรียกผ่าน Skill 00 และรายงาน Intermediate Output ทุกขั้น
 
 ## Mandatory Interpretation
 
-- ภาพใน `examples/` เป็นเพียงภาพแคปบางส่วนจาก Orthomosaic ขนาดใหญ่ เพื่อสอนหลักการตีความ
-- ห้ามถือว่าขนาดภาพตัวอย่างคือขนาดข้อมูลจริง
-- ห้ามใช้พิกัด Pixel ของภาพตัวอย่างเป็นพิกัดภูมิศาสตร์
-- งานจริงต้องอ่าน GeoTIFF, COG, VRT หรือ Raster ที่มี GeoTransform และ CRS
-- ห้ามโหลด Orthomosaic ทั้งไฟล์เข้า RAM เมื่อไฟล์มีขนาดใหญ่
-- ต้องประมวลผลแบบ Window/Tile และแปลงผลกลับเป็นพิกัดจริงของ Raster
-- ห้ามสร้างขอบเขตจากต้นที่มองเห็นเพียงอย่างเดียว ต้องพิจารณาแนวแถว ระยะปลูก และตำแหน่งต้นที่อาจหายหรือตาย
-- คลอง ถนน และคันดินเป็น Candidate Barrier ไม่ใช่ขอบเขตอัตโนมัติ
+- ภาพใน `examples/` เป็น Crop จาก Orthomosaic ใช้สอนการตีความ ไม่ใช่พิกัดจริง
+- งานจริงต้องอ่าน GeoTIFF, COG หรือ VRT ที่มี CRS และ Affine Transform
+- ห้ามโหลด Orthomosaic ขนาดใหญ่ทั้งหมดเข้า RAM
+- ต้องใช้ Overview และ Tile/Window ที่มี Overlap
+- ห้ามใช้สีเพียงอย่างเดียว ต้องใช้ Color, Shape, Texture, Scale และ Context
+- พุ่มสีเข้มอาจเป็นโกงกาง เงา หรือป่าเดิม ต้องแยกด้วยหลักฐานอื่น
+- พื้นสีเขียวอ่อนละเอียดต่อเนื่องอาจเป็นวัชพืช แต่ต้องตรวจ Object Scale และ Texture
+- ต้นจากมีใบยาวแผ่เป็นรัศมี ต้องแยกเป็น `nypa_palm`
+- พื้นที่ใต้เรือนยอดปิดใช้ `closed_canopy_unknown` ห้ามใช้ `not_planted`
+- ภาพช่วงเวลาเดียวไม่สามารถยืนยันได้ว่าต้นเกิดจากการปลูก
 
-## Required Reading Order
-
-ก่อนเขียน Code หรือวิเคราะห์ภาพใหม่ ให้อ่านตามลำดับ:
-
-1. `planting-evidence-boundary/SKILL.md`
-2. `planting-evidence-boundary/SKILL_ADDENDUM_ADVANCED.md`
-3. `planting-evidence-boundary/LARGE_ORTHOMOSAIC_WORKFLOW.md`
-4. `planting-evidence-boundary/QA_DEBUG_OUTPUTS.md`
-5. `planting-evidence-boundary/config/defaults.yaml`
-6. `planting-evidence-boundary/examples/example_01/notes.md`
-7. `planting-evidence-boundary/examples/example_01/example_manifest.json`
-8. `planting-evidence-boundary/examples/example_01/expected_boundary_pixel.json`
-9. `planting-evidence-boundary/examples/negative_examples/README.md`
-
-หากยังอธิบายไม่ได้ว่า Core, Evidence Envelope, Mortality Gap, Natural Vegetation, Barrier และ Uncertain Boundary ต่างกันอย่างไร ห้ามเริ่มสร้างระบบ
-
-## Required Evidence Classes
-
-ระบบต้องรองรับอย่างน้อย:
+## Required Core Classes
 
 ```text
-surviving_tree
-missing_tree_position
-planting_row
-planting_grid
-historical_planting_evidence
-natural_vegetation
+target_rhizophora_candidate
+weed_groundcover
+nypa_palm
+existing_woody_canopy
+natural_regeneration
+dead_dry_vegetation
+bare_mud
 open_water
-canal
-road_or_dike
+canal_or_tidal_channel
+shadow_unknown
+closed_canopy_unknown
 unknown_object
 ```
 
-## Required Boundary Outputs
-
-ระบบต้องแยกผลอย่างน้อย:
+## Required Gap Classes
 
 ```text
-planting_core
-planting_evidence_boundary
-uncertain_boundary
+confirmed_enrichment_gap
+probable_enrichment_gap
+uncertain_enrichment_gap
+natural_regeneration_gap
+disturbed_open_area
+closed_canopy_unknown_gap
+excluded_water_gap
 ```
 
-ห้ามวงเฉพาะต้นที่รอดและตัดช่องว่างต้นตายออกโดยไม่มีการวิเคราะห์ Pattern
+`confirmed_enrichment_gap` ต้องมี Supporting Evidence มากกว่าลักษณะภาพเพียงอย่างเดียว เช่น Ground Truth, Planting Point หรือภาพก่อน–หลัง
 
-## Large Raster Rules
+## Required Boundary Outputs
 
-1. อ่าน Metadata ก่อนเสมอ: width, height, band count, dtype, nodata, CRS, transform, pixel size และ overviews
-2. ใช้ Rasterio Window, GDAL block processing หรือ COG range reading
-3. ใช้ภาพ Overview สำหรับค้นหา Candidate Area ระดับภาพรวม
-4. ใช้ Detail Tile สำหรับตรวจร่องรอยต้นปลูกและแนวขอบ
-5. Tile แนะนำ 2048 หรือ 4096 Pixel พร้อม Overlap 10–20%
-6. Prediction ใกล้ขอบ Tile ต้องถูกลดน้ำหนักหรือตัดออกก่อนรวมผล
-7. รวม Mask/Polygon ใน Map CRS ไม่ใช่ต่อภาพด้วย Pixel จาก Tile คนละตำแหน่ง
-8. ใช้ Tile ID, Window, Affine Transform และ Source Raster เป็น Provenance ทุกครั้ง
-9. หากพื้นที่ปลูกไม่ต่อกัน ให้สร้าง MultiPolygon หรือหลาย Feature ห้ามบังคับรวมเป็น Polygon เดียว
-10. PDD ใช้เป็น AOI หรือข้อมูลเปรียบเทียบได้ แต่ห้ามใช้แทนหลักฐานจากภาพ
+```text
+enrichment_planting_core
+enrichment_evidence_boundary
+uncertain_enrichment_boundary
+excluded_area
+boundary_segment_confidence
+```
 
-## Required Analysis
-
-ก่อนสร้าง Candidate Boundary ต้องพยายามวิเคราะห์:
-
-- ต้นที่ตรวจพบ
-- แนวแถวและทิศทางแถว
-- ระยะต้นและระยะแถว
-- ความสม่ำเสมอของกริด
-- ตำแหน่งที่คาดว่าเคยปลูกแต่ไม่พบต้น
-- ความหนาแน่นของการปลูก
-- พืชธรรมชาติ
-- คลอง น้ำเปิด ถนน และคันดิน
-- Confidence รายช่วงแนวขอบ
-
-หากทำรายการใดไม่ได้ ต้องรายงานเหตุผล ไม่ใช่ละเว้นเงียบ ๆ
-
-## Required Pipeline
+## Full Pipeline
 
 ```text
 Large georeferenced orthomosaic
-→ read metadata and overviews
-→ optional AOI clipping
-→ generate overlapping tiles/windows
-→ detect trees and planting patterns
-→ infer rows, spacing and missing positions
-→ classify natural vegetation and candidate barriers
-→ create planting core
-→ create evidence envelope
-→ create uncertain boundary
-→ suppress tile-edge artifacts
-→ transform results to map coordinates
-→ merge and dissolve connected evidence
-→ remove water/road/empty-area exclusions
-→ segment-level confidence
-→ geometry QA and warning metrics
-→ overview and detail previews
-→ human review
-→ export GPKG/GeoJSON/KML
+→ Skill 01: inspect and tile
+→ Skill 02: classify land cover
+→ Skill 03: detect Rhizophora candidates
+→ Skill 04: classify weed and obstruction
+→ Skill 05: detect Nypa palm
+→ Skill 06: classify existing canopy and occlusion
+→ Skill 07: analyze enrichment gaps
+→ Skill 08: delineate candidate boundaries
+→ Skill 09: QA and human-review package
 ```
 
-## QA and Debug Requirement
+## Required Checkpoints
 
-ต้องสร้าง Metrics, Warning และ Debug Layers ตาม `QA_DEBUG_OUTPUTS.md`
+หยุดให้ผู้ใช้ตรวจอย่างน้อย:
 
-อย่างน้อยต้องตรวจ:
+1. Classification Preview
+2. Target vs Weed vs Nypa Preview
+3. Gap Classification Preview
+4. Candidate Boundary and Warning Preview
 
-- Large empty area
-- Under-boundary
-- Natural vegetation inclusion
-- Boundary too far from outer planting row
-- Tile-edge artifact
-- Barrier mismatch
-- Low-confidence boundary segment
+ห้ามรันผ่าน Checkpoint โดยไม่แสดงผลหรือรายงานเหตุผลที่ไม่สามารถสร้างได้
+
+## Large Raster Rules
+
+- อ่าน Metadata ก่อนเสมอ
+- Tile เริ่มต้น 2048 หรือ 4096 Pixel
+- Overlap เริ่มต้น 15% และปรับได้ช่วง 10–20%
+- บันทึก Tile ID, Window, Transform, Bounds และ Source Raster
+- Prediction ใกล้ Tile Edge ต้องลดน้ำหนักหรือรวมกับ Tile ซ้อน
+- รวมผลใน CRS ต้นฉบับ ไม่รวมด้วย Local Pixel Coordinate
+- ห้ามสร้างเส้นตาม Tile Edge เป็นขอบเขตจริง
 
 ## Human Review
 
-AI สร้างได้เฉพาะ Candidate Boundary
+AI ใช้สถานะได้สูงสุด:
 
-ห้ามตั้งสถานะ `approved`
+```text
+draft
+needs_human_review
+rework
+```
 
-ผลลัพธ์ต้องระบุชัดว่าเป็น `planting_evidence_boundary` และไม่ใช่ Legal Boundary
+AI ห้ามตั้ง:
+
+```text
+reviewed
+rejected
+approved
+```
+
+ทุกผลลัพธ์ต้องระบุข้อจำกัด ข้อมูลที่ขาด และจุดที่ต้องตรวจภาคสนาม
