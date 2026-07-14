@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "example_id": "example_01",
+  "task": "planting_evidence_boundary_delineation",
+  "input_image": "input.jpg",
+  "expected_overlay": "expected_overlay.jpg",
+  "expected_boundary": "expected_boundary_pixel.json",
+  "notes": "notes.md",
+  "labels": {
+    "included_area": "พื้นที่กลางภาพที่พบต้นปลูกต่อเนื่องเป็นแถวหรือกริด",
+    "excluded_features": [
+      "คลอง",
+      "น้ำเปิด",
+      "ถนน",
+      "คันดิน",
+      "แปลงข้างเคียง",
+      "สิ่งปลูกสร้าง",
+      "พื้นที่ไม่มีร่องรอยปลูก"
+    ],
+    "special_case": "รักษารอยเว้าด้านซ้ายกลาง ไม่ใช้ Convex Hull ปิดทับ"
+  },
+  "review": {
+    "status": "example_only",
+    "requires_human_review_for_new_images": true,
+    "legal_boundary": false
+  }
+}
