@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Planting Evidence Boundary Analysis Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source_raster",
+    "crs",
+    "analysis_status",
+    "review_status",
+    "outputs"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "project_id": {"type": "string"},
+    "plot_code": {"type": "string"},
+    "source_raster": {"type": "string"},
+    "crs": {"type": "string"},
+    "pixel_size": {"type": ["number", "null"]},
+    "analysis_status": {
+      "enum": ["completed", "completed_with_warning", "rework", "rejected"]
+    },
+    "review_status": {
+      "enum": ["draft", "needs_review", "reviewed", "rework", "rejected"]
+    },
+    "evidence_summary": {
+      "type": "object",
+      "properties": {
+        "detected_tree_count_inside": {"type": "integer", "minimum": 0},
+        "detected_tree_count_outside_near_boundary": {"type": "integer", "minimum": 0},
+        "expected_missing_position_count": {"type": "integer", "minimum": 0},
+        "planting_row_count": {"type": "integer", "minimum": 0},
+        "row_orientation_deg": {"type": ["number", "null"]},
+        "median_tree_spacing_m": {"type": ["number", "null"]},
+        "median_row_spacing_m": {"type": ["number", "null"]},
+        "spacing_consistency": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "row_coverage_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "missing_position_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "area_summary": {
+      "type": "object",
+      "properties": {
+        "planting_core_sqm": {"type": ["number", "null"]},
+        "planting_evidence_boundary_sqm": {"type": ["number", "null"]},
+        "uncertain_area_sqm": {"type": ["number", "null"]},
+        "mortality_gap_sqm": {"type": ["number", "null"]}
+      }
+    },
+    "qa_metrics": {
+      "type": "object",
+      "properties": {
+        "empty_area_ratio": {"type": ["number", "null"]},
+        "mortality_gap_ratio": {"type": ["number", "null"]},
+        "natural_vegetation_ratio": {"type": ["number", "null"]},
+        "open_water_without_evidence_ratio": {"type": ["number", "null"]},
+        "boundary_to_outer_row_distance_mean_m": {"type": ["number", "null"]},
+        "boundary_to_outer_row_distance_p95_m": {"type": ["number", "null"]},
+        "tile_edge_contact_ratio": {"type": ["number", "null"]},
+        "uncertain_boundary_length_m": {"type": ["number", "null"]},
+        "uncertain_boundary_ratio": {"type": ["number", "null"]},
+        "geometry_valid": {"type": "boolean"}
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "severity": {"enum": ["info", "warning", "critical"]},
+          "message": {"type": "string"},
+          "geometry_ref": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "boundary_segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["segment_id", "confidence", "requires_review"],
+        "properties": {
+          "segment_id": {"type": "string"},
+          "confidence": {"type": "number", "minimum": 0, "maximum": 100},
+          "confidence_class": {"enum": ["high", "medium", "low"]},
+          "evidence": {"type": "array", "items": {"type": "string"}},
+          "barrier_type": {"type": ["string", "null"]},
+          "outer_row_distance_m": {"type": ["number", "null"]},
+          "requires_review": {"type": "boolean"},
+          "review_note": {"type": "string"}
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "planting_core": {"type": ["string", "null"]},
+        "planting_evidence_boundary": {"type": ["string", "null"]},
+        "uncertain_boundary": {"type": ["string", "null"]},
+        "debug_layers": {"type": "array", "items": {"type": "string"}},
+        "previews": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}
