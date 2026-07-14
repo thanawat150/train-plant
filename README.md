@@ -38,6 +38,7 @@ planting-evidence-boundary/
 ├─ QA_DEBUG_OUTPUTS.md
 ├─ PROMPT.md
 ├─ PROMPT_LARGE_ORTHOMOSAIC.md
+├─ PROMPT_ADVANCED_ANALYSIS.md
 ├─ config/
 │  └─ defaults.yaml
 ├─ schemas/
@@ -58,7 +59,11 @@ planting-evidence-boundary/
 
 เปิด Repository ด้วย Codex แล้วให้ทำตาม `AGENTS.md`
 
-สำหรับการพัฒนาระบบกับ Orthomosaic ขนาดใหญ่ ให้ใช้ Prompt ใน:
+Prompt พร้อมรันสำหรับระบบขั้นสูง:
+
+`planting-evidence-boundary/PROMPT_ADVANCED_ANALYSIS.md`
+
+สำหรับ Workflow Orthomosaic ขนาดใหญ่แบบพื้นฐาน:
 
 `planting-evidence-boundary/PROMPT_LARGE_ORTHOMOSAIC.md`
 
