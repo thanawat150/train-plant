@@ -1,0 +1,64 @@
+schema_version: 1.0
+
+processing:
+  tile_size_px: 2048
+  alternate_tile_size_px: 4096
+  overlap_percent: 15
+  minimum_overlap_percent: 10
+  maximum_overlap_percent: 20
+  use_overviews: true
+  preserve_source_raster: true
+
+interpretation:
+  minimum_evidence_types: 2
+  use_color_only: false
+  detect_rows: true
+  detect_spacing: true
+  infer_missing_positions: true
+  detect_candidate_barriers: true
+  create_core_area: true
+  create_evidence_envelope: true
+  create_uncertain_boundary: true
+
+confidence:
+  high_min: 80
+  medium_min: 50
+  low_max: 49
+  require_review_below: 50
+
+mortality_gap:
+  enabled: true
+  maximum_gap_spacing_multiplier: 3.0
+  require_row_alignment: true
+  reject_when_permanent_barrier_present: true
+
+boundary:
+  use_concave_hull: true
+  use_convex_hull_by_default: false
+  preserve_valid_indentations: true
+  allow_multipolygon: true
+  allow_holes: true
+  smooth_geometry: false
+
+warnings:
+  large_empty_area_ratio: 0.30
+  boundary_distance_spacing_multiplier: 3.0
+  tile_edge_contact_ratio: 0.25
+  uncertain_boundary_ratio: 0.20
+  natural_vegetation_ratio: 0.20
+
+outputs:
+  export_gpkg: true
+  export_geojson: true
+  export_kml: true
+  export_debug_layers: true
+  export_confidence_raster: true
+  export_overview_preview: true
+  export_detail_previews: true
+  export_manifest: true
+  export_qa_report: true
+
+review:
+  ai_may_approve: false
+  default_status: draft
+  require_human_review: true
