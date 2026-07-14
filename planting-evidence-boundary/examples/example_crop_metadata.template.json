@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "example_id": "example_XX",
+  "source_raster": {
+    "file_name": "<ORTHOMOSAIC_FILE_NAME>.tif",
+    "file_hash": "<OPTIONAL_SHA256>",
+    "crs": "<EPSG_OR_WKT>",
+    "pixel_size_x": null,
+    "pixel_size_y": null,
+    "full_width_px": null,
+    "full_height_px": null
+  },
+  "crop_window": {
+    "col_off": null,
+    "row_off": null,
+    "width_px": null,
+    "height_px": null,
+    "window_transform": null,
+    "bounds": {
+      "left": null,
+      "bottom": null,
+      "right": null,
+      "top": null
+    },
+    "downsample_factor": 1
+  },
+  "files": {
+    "input_crop": "input.jpg",
+    "expected_overlay": "expected_overlay.jpg",
+    "expected_boundary_pixel": "expected_boundary_pixel.json",
+    "expected_boundary_geographic": "expected_boundary.geojson"
+  },
+  "usage": {
+    "visual_training_only": false,
+    "can_transform_pixel_to_map": true,
+    "can_calculate_area": true
+  },
+  "notes": "หากไม่ทราบ Window หรือ CRS ให้ตั้ง visual_training_only=true, can_transform_pixel_to_map=false และห้ามคำนวณพื้นที่"
+}
