@@ -1,100 +1,107 @@
 ---
 name: mangrove-land-cover-classifier
-description: จำแนกสิ่งปกคลุมจากภาพโดรนในพื้นที่ป่าชายเลน โดยใช้สี รูปทรง Texture ขนาด และบริบทเชิงพื้นที่ร่วมกัน ใช้สร้าง Class Map ก่อนตรวจโกงกางหรือวิเคราะห์แปลงปลูกเสริม
+description: สร้าง Land-cover Context แบบหยาบจากภาพโดรนเพื่อ Route งานไป Skill ตรวจพืช สิ่งบดบัง และ Surface เฉพาะทาง ไม่ยืนยันชนิดพืชหรือคุณสมบัติดินขั้นสุดท้าย
 ---
 
 # Mangrove Land-cover Classifier
 
 ## หน้าที่
 
-สร้างแผนที่ Class ขั้นกลาง ไม่สร้าง Candidate Boundary ไม่ยืนยันว่าต้นใดเกิดจากการปลูก และไม่ยืนยันคุณสมบัติดินจากสีภาพ
+สร้าง Context Map ก่อนตรวจ Target และวิเคราะห์ Gap
 
-## Required Classes
+Skill นี้ไม่สร้าง Boundary ไม่ยืนยันว่าต้นเกิดจากการปลูก และไม่เป็นเจ้าของ Class รายละเอียดที่ Skill 03–06, 16 และ 17 รับผิดชอบ
+
+## Core Context Classes
 
 ```text
-target_rhizophora_candidate
-existing_woody_canopy
-weed_groundcover
-nypa_palm
-coconut_palm_candidate
-other_palm_candidate
-palm_unknown
-natural_regeneration
-dead_dry_vegetation
-bare_mud
-open_water
-canal_or_tidal_channel
+woody_crown_candidate
+low_vegetation_candidate
+radial_frond_patch_candidate
+existing_canopy_candidate
+natural_regeneration_candidate
+dead_or_dry_vegetation
+bare_surface
+water_surface
+channel_or_tidal_feature
 shadow_unknown
 closed_canopy_unknown
 unknown_object
 ```
 
-## Optional Surface Classes
-
-เมื่อภาพมีดิน เลน น้ำขัง หรือพื้นผิวแตกต่างชัด ให้สร้าง Class เบื้องต้นหรือ Route ไป Skill 16:
+## Specialist Ownership
 
 ```text
-shallow_water_pool
-waterlogged_depression
-wet_mud
-dry_pale_mud
-dry_oxidized_soil
-transitional_mud
-disturbed_fill_soil
-possible_salt_crust
-unknown_surface
+03 = target_rhizophora_candidate
+04 = weed/groundcover
+05 = nypa_palm patch
+06 = existing canopy/occlusion
+16 = detailed surface/hydrology
+17 = palm/coconut candidate
 ```
+
+ห้ามให้ Skill 02 สร้างผล Final แทน Specialist เมื่อมีการเรียก Specialist แล้ว
 
 ## Evidence Sources
 
 ใช้ร่วมกันอย่างน้อย 2 กลุ่ม:
 
 - Color: RGB, HSV, Lab, ExG, GLI, VARI
-- Shape: crown compactness, radial leaves, object size, crown center
-- Texture: local variance, entropy, GLCM หรือ feature ที่เทียบเท่า
-- Context: อยู่ในช่องว่าง ใกล้คลอง เกาะขอบป่า อยู่เป็นผืนต่อเนื่อง หรือเป็นต้นเดี่ยว
+- Shape: compactness, radial leaves, object size, crown center
+- Texture: local variance, entropy, GLCM หรือเทียบเท่า
+- Context: gap, canal, forest edge, continuous patch, isolated crown
 - Height: DSM/DTM/CHM เมื่อมี
-- Surface/Hydrology: Skill 16 เมื่อมีความแตกต่างของเลน น้ำขัง หรือพื้นถูกรบกวน
 
-ห้ามใช้สีหรือ Threshold ค่าเดียวเป็นคำตอบสุดท้าย
+ห้ามใช้สีหรือ Threshold เดี่ยวเป็นคำตอบสุดท้าย
 
-## Image-based Interpretation
+## Routing Rules
 
-- โกงกางเป้าหมายมักเป็นพุ่มค่อนข้างเข้มและแยกเป็นก้อน แต่สีเปลี่ยนได้ตามแสงและอายุ
-- วัชพืชมักเป็นผืนละเอียด สีเขียวอ่อนหรือเขียวเหลือง ไม่มี Crown Center ชัด
-- ต้นจากมักขึ้นเป็นกอหรือผืน ใบยาวซ้อนกัน ศูนย์กลางไม่ชัด และสัมพันธ์กับพื้นที่ชุ่มน้ำ
-- ปาล์มหรือมะพร้าวมักเห็นเป็นต้นเดี่ยว มี Crown Center ชัด และทรงรัศมีจากยอดเดียว ให้ Route ไป Skill 17
-- ป่าเดิมมีพุ่มใหญ่ หลายขนาด หลายเฉด และ Texture หยาบ
-- เงาต้องแยกจากพุ่มสีเข้มและแอ่งน้ำด้วย Shape, Texture และความสัมพันธ์กับเรือนยอด
-- สีขาว–เทาใช้ได้สูงสุดเป็น Surface Candidate ห้ามยืนยันเกลือ ความเค็ม หรือชนิดดิน
+- Woody Crown → Skill 03 หรือ 06 ตาม Context
+- Low Vegetation → Skill 04
+- Radial Patch แบบกอ/ผืน → Skill 05
+- Radial Single Crown → Skill 17
+- Surface/Hydrology ซับซ้อน → Skill 16
+- Closed Canopy → Skill 06
+- Unknown ต้องคงไว้ ไม่บังคับ Class
 
 ## Workflow
 
-1. อ่าน Tile พร้อม Metadata จาก Skill 01
-2. Normalize สีแบบบันทึก Parameter และไม่แก้ Source
+1. อ่าน Tile จาก Skill 01 และ `project_manifest.json` จาก 01b
+2. Normalize สีโดยบันทึก Parameter
 3. สร้าง Feature Stack
-4. Segment เป็น Object/Superpixel หรือ Pixel Class ตามความเหมาะสม
-5. จำแนก Class พร้อม Confidence
-6. Route กลุ่มต้นจากไป Skill 05 และต้นเดี่ยวทรงรัศมีไป Skill 17
-7. Route พื้นผิวดิน–น้ำที่ซับซ้อนไป Skill 16
-8. ทำ Edge Suppression บริเวณขอบ Tile
-9. รวมผลกลับสู่ CRS ต้นฉบับ
-10. สร้าง Confusion/Review Samples เมื่อมี Ground Truth
+4. Segment เป็น Object/Superpixel หรือ Pixel Context
+5. สร้าง Core Context พร้อม Confidence
+6. Route Object ไป Specialist
+7. ทำ Tile-edge Suppression
+8. รวมผลใน CRS ต้นฉบับ
+9. สร้าง Review Samples เมื่อมี Ground Truth
 
 ## Outputs
 
-- `land_cover_class.tif`
-- `land_cover_confidence.tif`
-- `land_cover_objects.gpkg`
-- `class_legend.json`
-- `classification_preview.png`
+```text
+land_cover_context.tif
+land_cover_context_confidence.tif
+land_cover_context_objects.gpkg
+routing_candidates.gpkg
+context_legend.json
+classification_preview.png
+```
+
+เพื่อ Compatibility สามารถ Export Alias เดิมได้:
+
+```text
+land_cover_class.tif
+land_cover_confidence.tif
+land_cover_objects.gpkg
+```
+
+แต่ต้องระบุว่าเป็น Coarse Context ไม่ใช่ Specialist Final Class
 
 ## QA
 
-- Class ทุกชนิดต้องมี Confidence
-- เก็บ `unknown` แทนการบังคับ Class
-- พื้นที่ใต้เรือนยอดปิดใช้ `closed_canopy_unknown`
-- ตรวจ Class Balance และพื้นที่ที่สีคล้ายกันแต่ Texture ต่างกัน
-- ตรวจ Nypa vs Palm/Coconut Confusion
-- ตรวจ Water vs Shadow Confusion
-- Flag Tile ที่มีแสง สี หรือ Orthomosaic Seam ผิดปกติ
+- ทุก Class มี Confidence
+- Unknown ไม่ถูกบังคับ
+- Closed Canopy ไม่ถูกแปลงเป็นพื้นที่ไม่มีการปลูก
+- ตรวจ Water vs Shadow
+- ตรวจ Nypa-like Patch vs Single Palm Crown
+- ตรวจ Seam/Lighting Artifact
+- ตรวจ Routing Coverage ว่า Object สำคัญถูกส่ง Specialist หรือไม่
