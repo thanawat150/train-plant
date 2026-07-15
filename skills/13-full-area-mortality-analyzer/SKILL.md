@@ -1,15 +1,15 @@
 ---
 name: full-area-mortality-analyzer
-description: วิเคราะห์อัตรารอดและช่องว่างต้นตายในแปลงปลูกเต็มพื้นที่จากผลนับที่ผ่าน Spacing/Canopy Validation แล้ว ห้ามใช้ Raw Detection โดยตรง
+description: วิเคราะห์อัตรารอดและตำแหน่งต้นหายจากผลนับที่ผ่าน Skill 12b แล้ว ห้ามใช้ Raw Detection โดยตรง
 ---
 
 # Full-area Survival and Mortality Analyzer
 
 ## Scope
 
-จัดสถานะตำแหน่งปลูกและสร้างโซนอัตรารอดจากผล Skill 21 ห้ามใช้จุดแดงหรือ Raw Detection จาก Skill 11 เป็นจำนวนต้น และห้ามวงขอบเขตแปลงสุดท้าย
+จัดสถานะตำแหน่งปลูกและสร้างโซนอัตรารอดจากผล Skill 12b ห้ามใช้จุดแดงดิบจาก Skill 11 และห้ามวงขอบเขตสุดท้าย
 
-## Required inputs
+## Required Inputs
 
 ```text
 validated_planted_tree_points.gpkg
@@ -17,6 +17,14 @@ planting_point_status.gpkg
 planting_grid.gpkg
 grid_blocks.gpkg
 spacing_model.json
+tree_count_validation_metrics.json
+```
+
+เริ่มได้เมื่อ:
+
+```text
+validation_status = passed หรือ passed_with_warnings
+grid_refit_required = false
 ```
 
 Optional:
@@ -29,7 +37,7 @@ hydrology_features.gpkg
 planned_planting_points.gpkg
 ```
 
-## Position classes
+## Position Classes
 
 ```text
 surviving_confirmed
@@ -49,17 +57,17 @@ False Positive และ Existing Large Tree ต้องไม่เข้า�
 
 ## Rules
 
-- `confirmed_missing` และ `probable_missing` ต้องอยู่ใน Pattern/Grid Block ที่เชื่อถือได้
-- ต้องไม่มี Canopy Support ที่เพียงพอ ณ ตำแหน่ง Missing
-- จุดใต้ต้นใหญ่ เงา ภาพเบลอ หรือเรือนยอดปิดเป็น `not_observable` ไม่ใช่ต้นตาย
-- Background เป็นน้ำไม่ได้ทำให้ตำแหน่งเป็น `not_observable` โดยอัตโนมัติ หากเห็นเรือนยอดชัดยังนับเป็นต้นรอดได้
-- แยก Confirmed, Spacing-supported, Probable และ Estimated ออกจากกันในรายงาน
-- คำนวณแยกตาม Grid/Pattern Block และ Zone
-- ต้นเดิมขนาดใหญ่ไม่รวมเป็นต้นปลูกที่รอดและไม่รวมในตัวหาร
-- จุดที่ถูกกำหนดจาก Grid อย่างเดียวโดยไม่มี Canopy ต้องไม่ถูกนับเป็น Surviving
-- โซน `unreliable_random_scatter_zone` ห้ามใช้คำนวณอัตรารอดจนกว่าจะ Recalibrate
+- Missing ต้องอยู่ใน Pattern/Grid Block ที่เชื่อถือได้
+- ต้องไม่มี Canopy Support เพียงพอ ณ ตำแหน่ง Missing
+- จุดใต้ต้นใหญ่ เงา ภาพเบลอ หรือเรือนยอดปิดเป็น Not Observable
+- Background เป็นน้ำไม่ทำให้ Not Observable โดยอัตโนมัติ หากเห็นเรือนยอดยังนับได้
+- แยก Confirmed, Spacing-supported, Probable และ Estimated
+- คำนวณแยกตาม Pattern Block และ Zone
+- ต้นใหญ่เดิมไม่รวมตัวนับหรือตัวหาร
+- Grid-only Position ห้ามเป็น Surviving
+- `unreliable_random_scatter_zone` ห้ามคำนวณอัตรารอด
 
-## Zone classes
+## Zone Classes
 
 ```text
 high_survival_zone
@@ -71,7 +79,7 @@ uncertain_observation_zone
 validation_failed_zone
 ```
 
-Threshold ต้องตั้งใน Config และรายงานค่าที่ใช้
+Threshold ต้องอยู่ใน Config และรายงานค่าที่ใช้
 
 ## Metrics
 
@@ -96,29 +104,27 @@ uncertain_ratio
 validation_failed_area_sqm
 ```
 
-## Rate formulas
+## Rate Formulas
 
 Confirmed-only:
 
 ```text
-survival_rate_confirmed =
-confirmed_surviving_count
+confirmed_surviving
 /
-(confirmed_surviving_count + confirmed_missing_count)
+(confirmed_surviving + confirmed_missing)
 ```
 
 Operational estimate:
 
 ```text
-survival_rate_including_spacing_supported =
-(confirmed_surviving_count + spacing_supported_surviving_count)
+(confirmed_surviving + spacing_supported_surviving)
 /
-(confirmed_surviving_count + spacing_supported_surviving_count + confirmed_missing_count + probable_missing_count)
+(confirmed_surviving + spacing_supported_surviving + confirmed_missing + probable_missing)
 ```
 
-`not_observable` ต้องไม่อยู่ในตัวหาร เว้นแต่ผู้ใช้กำหนดวิธีอื่นอย่างชัดเจน
+Not Observable ไม่อยู่ในตัวหาร เว้นแต่ผู้ใช้กำหนดวิธีอื่นอย่างชัดเจน
 
-กรณี Merged Canopy ยังไม่แน่นอน ให้รายงานเป็นช่วง ไม่บังคับตัวเลขเดียว
+Merged Canopy ที่ยังไม่แน่นอนต้องรายงานเป็นช่วง
 
 ## Outputs
 
@@ -132,11 +138,10 @@ survival_mortality_preview.png
 
 ## QA
 
-- แจ้งเตือนเมื่อยังใช้ Raw Detection เป็น Input
-- แจ้งเตือนเมื่อ False Positive บนน้ำ/ดินยังอยู่ในจำนวนต้น
-- แจ้งเตือนเมื่อต้นใหญ่เดิมยังอยู่ในตัวนับ
-- แจ้งเตือนเมื่อพื้นที่ตรวจไม่ได้มีสัดส่วนสูง
-- แยก Missing Tree ออกจาก Not Observable
-- แสดงตัวหารและสูตรทุกครั้ง
-- แสดง Confirmed Count และ Estimated Range แยกกัน
-- ห้ามเรียก `probable_missing` ว่าต้นตายยืนยันแล้วโดยไม่มี Ground Truth
+- แจ้งเมื่อยังใช้ Raw Detection
+- ตรวจ False Positive บนน้ำ/ดิน/ถนน
+- ตรวจต้นใหญ่เดิมในตัวนับ
+- แยก Missing จาก Not Observable
+- แสดงตัวหารและสูตร
+- แสดง Confirmed Count กับ Estimated Range แยกกัน
+- ห้ามเรียก `probable_missing` ว่าต้นตายยืนยันโดยไม่มี Ground Truth
