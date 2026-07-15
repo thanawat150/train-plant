@@ -1,24 +1,25 @@
 ---
 name: spacing-guided-tree-count-validator
-description: ตรวจและแก้ผลนับต้นปลูกเต็มพื้นที่ด้วยเรือนยอดจริงร่วมกับระยะปลูก แนวแถว กริดหรือจุดปลูก แยกจุดฟุ้ง ต้นเดิมขนาดใหญ่ และเรือนยอดชิดกัน ก่อนคำนวณอัตรารอด
+description: ตรวจและรวมผลนับต้นปลูกเต็มพื้นที่จาก Raw Detection, Preliminary Pattern และ Touching Crown Centers โดยใช้เรือนยอดจริงร่วมกับระยะปลูก แนวแถว กริดหรือจุดปลูก ก่อนคำนวณอัตรารอด
 ---
 
 # Spacing-guided Tree Count Validator
 
 ## หน้าที่
 
-เปลี่ยน Raw Detection จาก Skill 11 และ Preliminary Pattern จาก Skill 12 ให้เป็นจำนวนต้นปลูกที่ผ่านการตรวจเชิงพื้นที่
+เปลี่ยนผลจาก Skill 11, 12 และ 12c ให้เป็นจำนวนต้นปลูกที่ผ่านการตรวจเชิงพื้นที่
 
 ```text
 spacing / row / grid = โครงสร้างสนับสนุน
 visible canopy       = หลักฐานว่ามีต้น
+12c crown center     = หลักฐานแยกต้นในเรือนยอดชิด
 ```
 
-ห้ามนับจากกริดอย่างเดียว และห้ามถือจุดแดงดิบเป็นจำนวนต้นสุดท้าย
+ห้ามนับจาก Grid อย่างเดียว ห้ามถือ Raw Detection เป็นจำนวนสุดท้าย และห้ามเดาจำนวนจากพื้นที่ Canopy Blob
 
 ## Inputs
 
-อ่านเต็มเฉพาะ Skill นี้ และอ่าน Output Contract ของ Skill 11, 12, 01b และ 16/17 เมื่อมี
+อ่านเต็มเฉพาะ Skill นี้ และอ่าน Output Contract ของ Skill 11, 12, 12c, 01b และ 16/17 เมื่อมี Trigger
 
 ```text
 planted_tree_candidates.gpkg
@@ -28,6 +29,11 @@ planting_rows.gpkg
 planting_grid.gpkg
 grid_blocks.gpkg
 spacing_reference_samples.gpkg
+touching_crown_centers.gpkg
+touching_crown_clusters_validated.gpkg
+touching_crown_false_positives.gpkg
+touching_crown_unresolved.gpkg
+touching_crown_metrics.json
 optional planned_planting_points.gpkg
 optional canopy_mask.tif
 optional surface_condition.tif
@@ -37,6 +43,8 @@ optional shadow_mask.tif
 project_manifest.json
 ```
 
+เมื่อไม่มี Touching Crown ให้ Skill 12c ส่ง Empty Valid Layers และ Metrics ที่จำนวนเป็น 0 ห้ามข้าม Contract
+
 ลำดับ Anchor:
 
 1. `surveyed_planting_point`
@@ -44,7 +52,20 @@ project_manifest.json
 3. `digitized_candidate_point`
 4. `inferred_grid_position`
 
-ห้ามทำให้ข้อ 4 ดูมีความน่าเชื่อถือเท่าข้อ 1–2
+ห้ามทำให้ข้อ 4 ดูน่าเชื่อถือเท่าข้อ 1–2
+
+## Pre-validation Gate for Skill 12c
+
+ก่อนใช้ผล 12c ต้องตรวจ:
+
+```text
+grid_created_tree_count = 0
+center_without_canopy_count = 0
+cluster_processed_ratio = 1.0
+validation_status != failed
+```
+
+หากไม่ผ่าน ให้หยุดเป็น `tree_count_validation_failed` หรือส่งกลับ `rework` ห้ามดำเนินการ Survival
 
 ## Core Interpretation
 
@@ -71,14 +92,45 @@ project_manifest.json
 
 ห้ามใช้ `1 canopy blob = 1 tree`
 
+Skill 12b ต้องใช้ `touching_crown_centers.gpkg` และคง `source_cluster_id` เพื่อย้อนตรวจ
+
+Mapping จาก 12c:
+
 ```text
-isolated_crown
-touching_crown_cluster
-merged_planted_canopy
+touching_crown_confirmed
+→ surviving_confirmed candidate
+
+touching_crown_spacing_supported
+→ surviving_spacing_supported candidate
+
+touching_crown_probable
+→ surviving_in_merged_canopy_probable candidate
+
+unresolved_merged_canopy
+→ unresolved_merged_canopy
+
 closed_canopy_unresolved
+→ not_observable_closed_canopy
+
+existing_large_tree_excluded
+→ existing_large_tree_excluded
+
+false_positive_on_road_or_dike
+→ false_positive_on_road_or_dike
+
+false_positive_on_groundcover
+→ false_positive_on_groundcover
+
+false_positive_on_shadow
+→ false_positive_on_shadow
+
+duplicate_crown_center
+→ duplicate_detection
 ```
 
-เมื่อเรือนยอดชิดกัน ให้ใช้ Crown Center, Reference Spacing, Row Alignment, Planned Point และ Canopy Support ร่วมกัน
+คำว่า Candidate หมายถึง 12b ต้องตรวจ Canopy, Pattern, Context และ Conflict อีกครั้งก่อนสร้าง Final Class
+
+ตำแหน่ง Grid ที่ไม่มี Crown Center ใช้ได้เฉพาะ Missing หรือ Not Observable ห้ามเป็น Surviving
 
 ### Existing Large Tree
 
@@ -86,7 +138,7 @@ closed_canopy_unresolved
 
 - ไม่นับเป็นต้นปลูก
 - ไม่ใช้ Fit Grid
-- ไม่แยก Texture ภายในพุ่มเป็นหลายต้นโดยอัตโนมัติ
+- ไม่แยก Texture ภายในพุ่มเป็นหลายต้น
 - จุดปลูกใต้พุ่มเป็น `not_observable_under_existing_tree`
 
 ## Pattern Classes
@@ -100,7 +152,7 @@ mixed_spacing_block
 unreliable_random_scatter_zone
 ```
 
-แปลงนากุ้งไม่จำเป็นต้องมีกริดเดียวทั้งแปลง แต่ภายในแต่ละ Block ต้องมี Local Spacing Consistency และ Canopy Evidence
+แปลงนากุ้งไม่จำเป็นต้องมี Grid เดียวทั้งแปลง แต่แต่ละ Block ต้องมี Local Spacing Consistency และ Canopy Evidence
 
 ## Two-stage Validation
 
@@ -136,7 +188,7 @@ planned_point_match_score
 
 ต้นปลูกต้องผ่าน Canopy Support และ Pattern Support ตาม Config
 
-`off_grid_tree_candidate` คือมีพุ่มจริงแต่ไม่ตรง Pattern ต้อง Review แยก ไม่บังคับเป็นต้นปลูกหรือตัดทิ้งทันที
+`off_grid_tree_candidate` คือมีพุ่มจริงแต่ไม่ตรง Pattern ต้อง Review แยก ห้ามบังคับเป็นต้นปลูกหรือตัดทิ้งทันที
 
 ## Final Position Classes
 
@@ -165,16 +217,16 @@ unresolved_merged_canopy
 ## Decision Rules
 
 ```text
-Canopy ชัด + ตรงจุดปลูก/กริด
+Canopy ชัด + ตรงจุดปลูก/Pattern
 = surviving_confirmed
 
-Canopy ชิด + ระยะ/แนวสอดคล้อง + มี Canopy Support
+12c Center ชัด + Local Spacing/Row สอดคล้อง + Canopy Support
 = surviving_spacing_supported หรือ surviving_in_merged_canopy_probable
 
-มีกริด + ไม่มี Canopy + พื้นมองเห็นชัด
+มี Grid + ไม่มี Canopy + พื้นมองเห็นชัด
 = confirmed_missing หรือ probable_missing
 
-มีกริด + ถูกต้นใหญ่/เงา/เรือนยอดปิดบัง
+มี Grid + ถูกต้นใหญ่/เงา/เรือนยอดปิดบัง
 = not_observable
 
 มี Detection + ไม่มี Canopy
@@ -188,9 +240,9 @@ Canopy ชิด + ระยะ/แนวสอดคล้อง + มี Canop
 
 ## Bootstrap and Refit Loop
 
-Skill 12 สร้าง Preliminary Pattern จากต้นเดี่ยว High-confidence ก่อน แล้ว Skill 12b ตรวจจุดทั้งหมด
+Skill 12 สร้าง Preliminary Pattern จากต้นเดี่ยว High-confidence ก่อน จากนั้น 12c แยก Center ในเรือนยอดชิด และ 12b ตรวจทั้งหมด
 
-เมื่อพบว่า Reference Set ปน False Positive หรือต้นใหญ่ หรือ Pattern เปลี่ยนชัด ให้สร้าง:
+เมื่อ Reference Set ปน False Positive ต้นใหญ่ หรือ Pattern เปลี่ยนชัด ให้สร้าง:
 
 ```text
 grid_refit_required: true
@@ -198,15 +250,22 @@ validated_reference_samples.gpkg
 grid_refit_request.json
 ```
 
-จากนั้นให้ Skill 12 Refit ด้วย `validated_reference_samples.gpkg` ได้สูงสุด 2 รอบ
+จากนั้น:
 
-ห้ามวนซ้ำไม่สิ้นสุด หากยังไม่เสถียรให้เป็น `pattern_validation_failed`
+```text
+rerun 12
+→ rerun 12c เฉพาะ Pattern Block ที่ได้รับผลกระทบ
+→ rerun 12b
+```
+
+ทำได้สูงสุด 2 รอบ หากยังไม่เสถียรให้เป็น `pattern_validation_failed`
 
 Skill 13 เริ่มได้เมื่อ:
 
 ```text
 validation_status = passed หรือ passed_with_warnings
 grid_refit_required = false
+touching_crown_validation_status != failed
 ```
 
 ## Required Attributes
@@ -218,6 +277,8 @@ grid_block_id
 planned_point_id
 planned_point_source
 raw_detection_id
+touching_crown_center_id
+source_cluster_id
 final_class
 count_weight
 confidence
@@ -248,6 +309,7 @@ surveyed_point_plus_canopy
 approved_plan_plus_canopy
 digitized_point_plus_canopy
 spacing_guided_center
+touching_crown_center
 merged_canopy_estimate
 human_review
 ```
@@ -256,6 +318,9 @@ human_review
 
 ```text
 raw_detection_count
+touching_crown_confirmed_input_count
+touching_crown_spacing_supported_input_count
+touching_crown_probable_input_count
 validated_confirmed_count
 validated_spacing_supported_count
 probable_merged_canopy_count
@@ -300,6 +365,7 @@ merged_canopy_preview.png
 
 Flag `tree_count_validation_failed` เมื่อ:
 
+- Skill 12c Metrics ไม่ผ่าน Gate
 - Crown Support Ratio ต่ำ
 - จุดบนดิน/น้ำ/ถนนเกิน Config
 - Random Scatter สูงและไม่มี Pattern Block
@@ -311,7 +377,7 @@ Flag `tree_count_validation_failed` เมื่อ:
 
 ## Downstream Contract
 
-Skill 13, 14, 15 และ 18 ต้องใช้ผล Validated จาก Skill นี้ ห้ามใช้ Raw Detection เป็นจำนวนสุดท้าย
+Skill 13, 14, 15 และ 18 ต้องใช้ผล Validated จาก Skill นี้ ห้ามใช้ Raw Detection หรือผล 12c โดยตรงเป็นจำนวนสุดท้าย
 
 ## Restrictions
 
