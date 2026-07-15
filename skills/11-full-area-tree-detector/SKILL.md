@@ -1,15 +1,15 @@
 ---
 name: full-area-tree-detector
-description: สร้าง Raw Crown/Tree Candidates ในแปลงปลูกเต็มพื้นที่จากภาพจริง ผลยังไม่ใช่จำนวนต้นสุดท้ายและต้องผ่าน Skill 12 และ 12b
+description: สร้าง Raw Crown/Tree Candidates ในแปลงปลูกเต็มพื้นที่จากภาพจริง ผลยังไม่ใช่จำนวนต้นสุดท้ายและต้องผ่าน Skill 12, 12c และ 12b
 ---
 
 # Full-area Tree Detector
 
 ## Scope
 
-ทำเฉพาะ Raw Detection จากเรือนยอดที่มองเห็น ห้ามอนุมานต้นจากกริด สรุปจำนวนสุดท้าย วงขอบเขต หรือคำนวณอัตรารอด
+ทำเฉพาะ Raw Detection จากเรือนยอดที่มองเห็น ห้ามอนุมานต้นจาก Grid สรุปจำนวนสุดท้าย วงขอบเขต หรือคำนวณอัตรารอด
 
-ผลต้องผ่าน Skill 12 และ 12b
+ผลต้องผ่าน Skill 12, 12c และ 12b
 
 ## Inputs
 
@@ -27,7 +27,8 @@ description: สร้าง Raw Crown/Tree Candidates ในแปลงปล�
 - จุดบนดิน น้ำเปล่า ถนน คันดิน หรือ Shadow-only ไม่ใช่ต้น
 - น้ำไม่ใช่ Exclusion ทั้งหมด: ต้นในน้ำตื้นนับได้เมื่อมีเรือนยอดจริง
 - แยก `existing_large_tree_candidate` เมื่อขนาด รูปทรง หรือบริบทต่างจากต้นปลูกรอบข้าง
-- แยก `touching_crown_cluster` และ `merged_canopy_candidate`
+- แยก `touching_crown_cluster`, `merged_planted_canopy_candidate` และ `closed_canopy_unresolved`
+- ทุก Touching/Merged Cluster ต้องมี `touching_cluster_id`
 - รวม Detection ซ้ำใน Tile Overlap
 - ห้ามใช้ Expected Count หรือ Grid เติม Detection
 
@@ -37,7 +38,8 @@ description: สร้าง Raw Crown/Tree Candidates ในแปลงปล�
 isolated_planted_crown_candidate
 probable_planted_crown_candidate
 touching_crown_cluster
-merged_canopy_candidate
+merged_planted_canopy_candidate
+closed_canopy_unresolved
 existing_large_tree_candidate
 palm_or_other_large_crown_candidate
 shadow_only
@@ -75,9 +77,12 @@ touching_crown_clusters.gpkg
 existing_large_trees.gpkg
 shadow_mask.tif
 optional canopy_mask.tif
+optional canopy_probability.tif
 tree_detection_preview.png
 tree_detection_metrics.json
 ```
+
+`touching_crown_clusters.gpkg` ต้องมีทุก Cluster ที่ชิด รวมเป็นผืน หรือยังแยกไม่ได้ ห้ามตัด Cluster ใหญ่ทิ้งด้วย Area Threshold
 
 ## QA
 
@@ -87,6 +92,7 @@ tree_detection_metrics.json
 - ต้นเดิมขนาดใหญ่ถูกเสนอเป็นต้นปลูก
 - พุ่มเดียวถูกแบ่งหลายจุด
 - เรือนยอดชิดถูกบังคับเป็นหนึ่งต้น
+- Cluster ใหญ่ถูกข้ามโดยไม่มีสถานะ
 - รายงาน High/Medium/Low Confidence และ Cluster ที่ยังแยกไม่ได้
 
 ห้ามปรับ Threshold เพื่อให้จำนวนตรงค่าที่คาด
@@ -94,5 +100,6 @@ tree_detection_metrics.json
 ## Downstream
 
 - Skill 12 ใช้เฉพาะต้นเดี่ยว High-confidence หา Preliminary Spacing/Pattern
-- Skill 12b ตรวจ Raw Detection ทั้งหมดร่วมกับ Grid/จุดปลูก
+- Skill 12c ใช้ `touching_crown_clusters.gpkg` ร่วมกับ Pattern จาก Skill 12 เพื่อสร้าง Image-supported Crown Centers
+- Skill 12b รวม Raw Detection และผล 12c เพื่อตัดสิน Final Class
 - Skill 13–15 ห้ามใช้ผล Skill 11 เป็นจำนวนสุดท้ายโดยตรง
