@@ -1,157 +1,118 @@
 # Skill Index
 
-เลือกใช้ Skill ตามงานและอ่านเฉพาะไฟล์ที่จำเป็น เพื่อลด Token
+ใช้ไฟล์นี้เมื่อยังไม่แน่ใจว่าต้องเรียก Skill ใด หากทราบ Path แล้วให้อ่าน Skill นั้นโดยตรง
 
-## Shared
+Machine-readable registry: `skills/registry.yaml`
 
-| Skill | หน้าที่ |
-|---|---|
-| `01-large-orthomosaic-reader` | อ่าน GeoTIFF/COG/VRT ขนาดใหญ่ สร้าง Overview, Tile Index และ Manifest |
-| `16-surface-hydrology-condition-classifier` | จำแนกสภาพผิว ดิน เลน น้ำขัง แอ่งน้ำ และร่องน้ำที่มองเห็น |
-| `17-palm-coconut-detector` | แยกปาล์ม/มะพร้าว Candidate ออกจากต้นจากและโกงกาง |
-| `18-field-inspection-priority-analyzer` | เลือกจุดและโซนที่ควรเข้าตรวจจากความไม่แน่นอน ความเสียหาย ผลกระทบ และ QA |
-| `19-multimodal-access-route-planner` | ประเมินเส้นทางเข้าจุดตรวจทางบก ทางเรือ และการเดินช่วงสุดท้าย |
-| `20-field-inspection-mission-planner` | รวมจุดตรวจและ Route เป็นภารกิจ วัน ทีม และ Field Checklist |
+## Input
 
-## ปลูกเสริม
+| ID | Skill | หน้าที่ |
+|---|---|---|
+| 01 | `large-orthomosaic-reader` | ตรวจ Raster, CRS, Overview และ Tile |
+| 01b | `project-input-preflight` | ตรวจ Plot, วันที่, AOI, จุดปลูก, Route และ Provenance |
 
-| Skill | หน้าที่ |
-|---|---|
-| `00-enrichment-analysis-orchestrator` | เรียก Workflow ปลูกเสริมทั้งชุด |
-| `02-mangrove-land-cover-classifier` | จำแนกสิ่งปกคลุมหลัก |
-| `03-rhizophora-crown-detector` | ตรวจพุ่มโกงกาง Candidate |
-| `04-weed-groundcover-classifier` | แยกวัชพืชและการบดบัง |
-| `05-nypa-palm-detector` | ตรวจต้นจากที่ขึ้นเป็นกอหรือผืน |
-| `06-existing-canopy-occlusion` | ป่าเดิม เงา และเรือนยอดปิด |
-| `07-enrichment-gap-analyzer` | วิเคราะห์ช่องว่างแบบ Gap-by-gap |
-| `08-enrichment-boundary-delineator` | สร้างขอบเขตปลูกเสริม Candidate |
-| `09-enrichment-qa-human-review` | QA และชุด Human Review |
+งาน Production ต้องผ่าน 01b ส่วน JPG/PNG ไม่มีพิกัดใช้ได้เฉพาะ Demo
 
-## ปลูกเต็มพื้นที่
-
-| Skill | หน้าที่ |
-|---|---|
-| `10-full-area-planting-orchestrator` | เรียก Workflow ปลูกเต็มทั้งชุด |
-| `11-full-area-tree-detector` | สร้าง Raw Crown/Tree Candidates จากภาพจริง ยังไม่ใช่จำนวนสุดท้าย |
-| `12-planting-grid-inference` | หา Reference Spacing, แนวแถว, Grid และ Planting Pattern Block เบื้องต้น |
-| `21-spacing-guided-tree-count-validator` | กรองจุดฟุ้ง ตัดต้นใหญ่/จุดบนดินน้ำ และนับเรือนยอดชิดด้วย Canopy+Spacing |
-| `13-full-area-mortality-analyzer` | วิเคราะห์อัตรารอดจากผล Skill 21 เท่านั้น |
-| `14-full-area-boundary-delineator` | สร้าง Core, Evidence Boundary และ Uncertain Edge |
-| `15-full-area-qa-human-review` | QA และชุด Human Review สำหรับปลูกเต็ม |
-
-## Full-area core pipeline
+## Enrichment Planting
 
 ```text
-01 อ่านภาพ/แบ่ง Tile
-→ 11 Raw Crown Detection
-→ 12 Reference Spacing และ Pattern Blocks
-→ 21 Validate Count ด้วย Canopy + Spacing + จุดปลูก
-→ 13 Survival/Mortality
-→ 14 Boundary
-→ 15 QA
+00 → 01 → 01b → 02 → 03/04/05/06 → 07 → 08 → 09
 ```
 
-ห้ามข้าม Skill 21 แล้วนำ Raw Detection จาก Skill 11 ไปคำนวณอัตรารอด
+| ID | Skill | หน้าที่ |
+|---|---|---|
+| 00 | `enrichment-analysis-orchestrator` | ควบคุม Workflow ปลูกเสริม |
+| 02 | `mangrove-land-cover-classifier` | สร้าง Land-cover Context |
+| 03 | `rhizophora-crown-detector` | ตรวจ Target Rhizophora Candidate |
+| 04 | `weed-groundcover-classifier` | แยกวัชพืช/การบดบัง |
+| 05 | `nypa-palm-detector` | แยกต้นจากแบบกอ/ผืน |
+| 06 | `existing-canopy-occlusion` | ป่าเดิม เงา และเรือนยอดปิด |
+| 07 | `enrichment-gap-analyzer` | วิเคราะห์ Gap-by-gap |
+| 08 | `enrichment-boundary-delineator` | สร้าง Candidate Boundary |
+| 09 | `enrichment-qa-human-review` | QA และ Human Review Package |
 
-## ความเข้าใจสำหรับ Skill 21
-
-- จุดแดงเป็น Raw Candidate ไม่ใช่จำนวนต้นสุดท้าย
-- ต้นปลูกต้องมีเรือนยอดรองรับและสอดคล้องกับระยะ/แนว/จุดปลูก
-- จุดฟุ้งบนดิน น้ำ ถนน วัชพืช หรือเงาต้องถูก Flag เป็น False Positive
-- น้ำไม่ใช่ Exclusion ทั้งหมด เพราะต้นป่าชายเลนสามารถมีเรือนยอดอยู่เหนือผิวน้ำ
-- เรือนยอดชิดกันนับจาก Center Spacing และ Pattern ไม่ใช้ `1 blob = 1 tree`
-- ต้นเดิมขนาดใหญ่ไม่นับ ไม่ใช้ Fit Grid และจุดใต้พุ่มใหญ่เป็น Not Observable
-- แปลงนากุ้งรองรับ `shrimp_pond_planting_block` ที่ระยะสม่ำเสมอเฉพาะภายใน Block
-- Grid ห้ามสร้างต้นรอดขึ้นมาเองเมื่อไม่มี Canopy Evidence
-
-# Field Inspection Planning
-
-ใช้หลังมีผลวิเคราะห์แล้ว:
+## Full-area Planting
 
 ```text
-Analysis/QA Outputs
-→ Skill 18: จุดไหนต้องตรวจและเพราะอะไร
-→ Skill 19: เข้าทางบกหรือทางเรือ ใช้เวลาและระยะเท่าไร
-→ Skill 20: จัดกลุ่มเป็น Mission, วัน, ทีม และ Checklist
+10 → 01 → 01b → 11 → 12 → 12b → 13 → 14 → 15
 ```
 
-## หลักการสำคัญ
+| ID | Skill | หน้าที่ |
+|---|---|---|
+| 10 | `full-area-planting-orchestrator` | ควบคุม Workflow ปลูกเต็ม |
+| 11 | `full-area-tree-detector` | สร้าง Raw Crown Candidates ยังไม่ใช่จำนวนสุดท้าย |
+| 12 | `planting-grid-inference` | หา Preliminary Spacing, Rows และ Pattern Blocks |
+| 12b | `spacing-guided-tree-count-validator` | กรองจุดฟุ้ง ต้นใหญ่ จุดผิดบริบท และนับเรือนยอดชิด |
+| 13 | `full-area-mortality-analyzer` | วิเคราะห์ Survival/Mortality จากผล 12b |
+| 14 | `full-area-boundary-delineator` | สร้าง Candidate Boundary จากผล Validated |
+| 15 | `full-area-qa-human-review` | QA ตั้งแต่ Raw ถึง Boundary |
 
-- `evidence_priority_score` = จุดนี้จำเป็นต้องตรวจมากเพียงใด
-- `access_burden_score` = จุดนี้เข้าถึงยากเพียงใด
-- ห้ามรวมสองคะแนนจนจุดสำคัญแต่ไกลหายออกจากแผน
-- จุดสำคัญและไกลให้เป็น `special_mission` หรือ `remote_cluster_mission`
-- ระยะเข้าถึงต้องใช้ Network Distance ไม่ใช่เส้นตรง
-- Route จากภาพเป็น Candidate ต้องให้ทีมพื้นที่ยืนยัน
+ห้ามข้าม 12b แล้วใช้ Raw Detection จาก 11 คำนวณอัตรารอดหรือวงขอบเขต
 
-# Token-efficient load sets
+## Optional Context
+
+| ID | Skill | Trigger |
+|---|---|---|
+| 16 | `surface-hydrology-condition-classifier` | ดิน เลน น้ำขัง ร่องน้ำ หรือ Surface ต่างกันชัด |
+| 17 | `palm-coconut-detector` | ต้นเดี่ยวทรงรัศมีที่อาจเป็นปาล์ม/มะพร้าว |
+
+ไม่มี Trigger ห้ามโหลด
+
+## Field Planning
+
+```text
+18 → 19 → 20
+```
+
+| ID | Skill | หน้าที่ |
+|---|---|---|
+| 18 | `field-inspection-priority-analyzer` | เลือกจุดที่ควรตรวจและเหตุผล |
+| 19 | `multimodal-access-route-planner` | ประเมินทางบก ทางเรือ และทางเดินช่วงสุดท้าย |
+| 20 | `field-inspection-mission-planner` | จัด Mission, วัน, ทีม และ Checklist |
+
+## Feedback and Evaluation
+
+```text
+21 → 22
+```
+
+| ID | Skill | หน้าที่ |
+|---|---|---|
+| 21 | `field-feedback-ground-truth-ingestor` | รับผลภาคสนามแบบมีผู้ตรวจและ Version |
+| 22 | `model-calibration-evaluator` | วัด Precision/Recall, Count Error และเสนอ Threshold |
+
+## Token-efficient Load Sets
 
 | งาน | อ่านเต็ม | อ่านเฉพาะ Output Contract |
 |---|---|---|
-| อ่านภาพ/แบ่ง Tile | 01 | ไม่มี |
-| Raw Crown Detection | 11 | 01 และ 16/17 เมื่อใช้ |
-| หา Reference Spacing/Grid | 12 | 11 |
-| ตรวจนับต้นจริง/เรือนยอดชิด | 21 | 11, 12 และ 16 เมื่อใช้ |
-| วิเคราะห์อัตรารอด | 13 | 21, 12 และ 16 เมื่อใช้ Surface Context |
-| วงขอบเขตปลูกเต็ม | 14 | 12, 13, 21 และ Optional Context |
-| QA ปลูกเต็ม | 15 | 11–14, 21 และ Optional Outputs |
-| จำแนก Surface/Hydrology | 16 | 01 |
-| แยก Palm/Coconut | 17 | 01, 02 หรือ 05 ตาม Input |
-| จำแนกสิ่งปกคลุมปลูกเสริม | 01, 02 | ไม่มี |
-| หาโกงกางในปลูกเสริม | 03 | 01, 02 |
-| แยกวัชพืช | 04 | 01, 02 |
-| แยกต้นจาก | 05 | 01, 02 |
-| วิเคราะห์ Gap ปลูกเสริม | 07 | 02–06 และ 16/17 เมื่อมี |
-| วงขอบเขตปลูกเสริม | 08 | 07 |
-| QA ปลูกเสริม | 09 | 02–08 และ Optional Outputs |
-| เลือกจุดเข้าตรวจ | 18 | Analysis, Boundary และ QA Outputs |
-| วิเคราะห์ทางบก/ทางเรือ | 19 | 18 และ Route Layers |
-| จัด Mission ภาคสนาม | 20 | 18–19 |
+| Preflight | 01b | 01 |
+| Land-cover ปลูกเสริม | 02 | 01, 01b |
+| Gap ปลูกเสริม | 07 | 02–06 |
+| Raw Detection ปลูกเต็ม | 11 | 01, 01b |
+| Preliminary Pattern | 12 | 11 |
+| ตรวจจำนวนต้นจริง | 12b | 11, 12 และ 01b/16/17 เมื่อใช้ |
+| Survival/Mortality | 13 | 12b, 12 |
+| Boundary ปลูกเต็ม | 14 | 12, 12b, 13 |
+| QA ปลูกเต็ม | 15 | 11–14 และ 12b |
+| เลือกจุดตรวจ | 18 | 09 หรือ 15 |
+| Route | 19 | 18 |
+| Mission | 20 | 18–19 |
+| รับผลภาคสนาม | 21 | 18/20 และผลวิเคราะห์ |
+| ประเมินโมเดล | 22 | 21 และผล Prediction |
 
-## Trigger ของ Skill 21
+## Output Handoff
 
-เรียกเป็น Core Step ของปลูกเต็มทุกครั้ง โดยเฉพาะเมื่อพบ:
-
-- จุดแดงกระจายฟุ้งและไม่ตรงพุ่ม
-- จุดบนดินโล่ง ผิวน้ำ ถนน หรือคันดิน
-- เรือนยอดชิดกันแต่ระยะต้นใกล้เคียงกัน
-- ต้นเดิมขนาดใหญ่ปะปน
-- มีจุดปลูกเดิมหรือ Grid ที่ต้องจับคู่กับต้นจริง
-- แปลงนากุ้งมีหลาย Planting Block
-
-## วิธีอ่าน Output Contract
-
-เมื่อไม่ต้องอ่าน Skill ก่อนหน้าทั้งไฟล์ ให้อ่านเฉพาะหัวข้อ:
-
-```text
-Inputs
-Outputs
-Required attributes
-Required metrics
-Warnings
-```
-
-ห้ามส่ง Prompt และคำอธิบายจากขั้นก่อนหน้าซ้ำทั้งหมด ให้ส่งเพียง:
+ส่งต่อเฉพาะ:
 
 ```text
 source_file_paths
-schema/version
+schema_version
+project_id / plot_code
 crs
-config_used
+config_path
 summary_metrics
 warnings
+review_status
 ```
 
-# Routing rules
-
-- งานครบปลูกเสริม: Skill 00
-- งานครบปลูกเต็ม: Skill 10 และต้องผ่าน Skill 21
-- ตรวจจำนวนต้นปลูกเต็มจากผลที่มีอยู่: Skill 21
-- วางจุดตรวจอย่างเดียว: Skill 18
-- วาง Route อย่างเดียว: Skill 19
-- จัด Mission: Skill 20
-- Skill 16–20 เป็น Optional Shared Skill เรียกเฉพาะเมื่อมี Trigger
-- Skill 21 เป็น Core Validation ของปลูกเต็ม ไม่ใช่ Optional
-- ภาพ Crop ใช้สอนการตีความ ไม่ใช่พิกัดจริง
-- งานจริงต้องรักษา CRS และ Affine Transform
-- AI สร้างได้เฉพาะ Candidate Result และห้ามตั้งสถานะ `approved`
+รายละเอียดสถาปัตยกรรม: `docs/ARCHITECTURE.md`
