@@ -1,0 +1,188 @@
+schema_version: 1.0
+repository: train-plant
+
+routing:
+  production_preflight: ["01", "01b"]
+  enrichment_core: ["01", "01b", "02", "03", "04", "05", "06", "07", "08", "09"]
+  full_area_core: ["01", "01b", "11", "12", "12b", "13", "14", "15"]
+  field_plan: ["18", "19", "20"]
+  feedback_loop: ["21", "22"]
+
+skills:
+  - id: "00"
+    name: enrichment-analysis-orchestrator
+    stage: orchestrator
+    workflow: enrichment
+    path: skills/00-enrichment-analysis-orchestrator/SKILL.md
+
+  - id: "01"
+    name: large-orthomosaic-reader
+    stage: input
+    workflow: shared
+    path: skills/01-large-orthomosaic-reader/SKILL.md
+
+  - id: "01b"
+    name: project-input-preflight
+    stage: input
+    workflow: shared
+    path: skills/01b-project-input-preflight/SKILL.md
+    depends_on: ["01"]
+    production_required: true
+
+  - id: "02"
+    name: mangrove-land-cover-classifier
+    stage: context
+    workflow: enrichment
+    path: skills/02-mangrove-land-cover-classifier/SKILL.md
+    depends_on: ["01", "01b"]
+
+  - id: "03"
+    name: rhizophora-crown-detector
+    stage: detection
+    workflow: enrichment
+    path: skills/03-rhizophora-crown-detector/SKILL.md
+    depends_on: ["02"]
+
+  - id: "04"
+    name: weed-groundcover-classifier
+    stage: context
+    workflow: enrichment
+    path: skills/04-weed-groundcover-classifier/SKILL.md
+    depends_on: ["02"]
+
+  - id: "05"
+    name: nypa-palm-detector
+    stage: context
+    workflow: enrichment
+    path: skills/05-nypa-palm-detector/SKILL.md
+    depends_on: ["02"]
+
+  - id: "06"
+    name: existing-canopy-occlusion
+    stage: context
+    workflow: enrichment
+    path: skills/06-existing-canopy-occlusion/SKILL.md
+    depends_on: ["02"]
+
+  - id: "07"
+    name: enrichment-gap-analyzer
+    stage: analysis
+    workflow: enrichment
+    path: skills/07-enrichment-gap-analyzer/SKILL.md
+    depends_on: ["02", "03", "04", "05", "06"]
+
+  - id: "08"
+    name: enrichment-boundary-delineator
+    stage: boundary
+    workflow: enrichment
+    path: skills/08-enrichment-boundary-delineator/SKILL.md
+    depends_on: ["07"]
+
+  - id: "09"
+    name: enrichment-qa-human-review
+    stage: qa
+    workflow: enrichment
+    path: skills/09-enrichment-qa-human-review/SKILL.md
+    depends_on: ["02", "03", "04", "05", "06", "07", "08"]
+
+  - id: "10"
+    name: full-area-planting-orchestrator
+    stage: orchestrator
+    workflow: full_area
+    path: skills/10-full-area-planting-orchestrator/SKILL.md
+
+  - id: "11"
+    name: full-area-tree-detector
+    stage: raw_detection
+    workflow: full_area
+    path: skills/11-full-area-tree-detector/SKILL.md
+    depends_on: ["01", "01b"]
+
+  - id: "12"
+    name: planting-grid-inference
+    stage: preliminary_pattern
+    workflow: full_area
+    path: skills/12-planting-grid-inference/SKILL.md
+    depends_on: ["11"]
+
+  - id: "12b"
+    name: spacing-guided-tree-count-validator
+    stage: count_validation
+    workflow: full_area
+    path: skills/12b-spacing-guided-tree-count-validator/SKILL.md
+    depends_on: ["11", "12"]
+
+  - id: "13"
+    name: full-area-mortality-analyzer
+    stage: survival
+    workflow: full_area
+    path: skills/13-full-area-mortality-analyzer/SKILL.md
+    depends_on: ["12b"]
+
+  - id: "14"
+    name: full-area-boundary-delineator
+    stage: boundary
+    workflow: full_area
+    path: skills/14-full-area-boundary-delineator/SKILL.md
+    depends_on: ["12", "12b", "13"]
+
+  - id: "15"
+    name: full-area-qa-human-review
+    stage: qa
+    workflow: full_area
+    path: skills/15-full-area-qa-human-review/SKILL.md
+    depends_on: ["11", "12", "12b", "13", "14"]
+
+  - id: "16"
+    name: surface-hydrology-condition-classifier
+    stage: optional_context
+    workflow: shared
+    path: skills/16-surface-hydrology-condition-classifier/SKILL.md
+    optional: true
+
+  - id: "17"
+    name: palm-coconut-detector
+    stage: optional_context
+    workflow: shared
+    path: skills/17-palm-coconut-detector/SKILL.md
+    optional: true
+
+  - id: "18"
+    name: field-inspection-priority-analyzer
+    stage: field_priority
+    workflow: shared
+    path: skills/18-field-inspection-priority-analyzer/SKILL.md
+    depends_on_any: ["09", "15"]
+
+  - id: "19"
+    name: multimodal-access-route-planner
+    stage: field_access
+    workflow: shared
+    path: skills/19-multimodal-access-route-planner/SKILL.md
+    depends_on: ["18"]
+
+  - id: "20"
+    name: field-inspection-mission-planner
+    stage: field_mission
+    workflow: shared
+    path: skills/20-field-inspection-mission-planner/SKILL.md
+    depends_on: ["18", "19"]
+
+  - id: "21"
+    name: field-feedback-ground-truth-ingestor
+    stage: feedback
+    workflow: shared
+    path: skills/21-field-feedback-ground-truth-ingestor/SKILL.md
+    depends_on: ["18"]
+
+  - id: "22"
+    name: model-calibration-evaluator
+    stage: evaluation
+    workflow: shared
+    path: skills/22-model-calibration-evaluator/SKILL.md
+    depends_on: ["21"]
+
+optional_backlog:
+  - temporal-change-monitor
+  - executive-report-exporter
+  - active-learning-sample-selector
