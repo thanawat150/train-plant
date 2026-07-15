@@ -1,21 +1,25 @@
 # train-plant
 
-ชุด Skill สำหรับวิเคราะห์ภาพโดรนและ Orthomosaic ของงานปลูกป่าชายเลน ตั้งแต่ตรวจต้น หาแถว/กริด วิเคราะห์อัตรารอด วงขอบเขต ไปจนถึงเลือกจุดเข้าตรวจและวางแผนเส้นทางทางบก–ทางเรือ
+ชุด Skill สำหรับวิเคราะห์ภาพโดรนและ Orthomosaic ของงานปลูกป่าชายเลน ตั้งแต่ตรวจต้น หาแถว/กริด ตรวจความถูกต้องของจำนวนต้น วิเคราะห์อัตรารอด วงขอบเขต ไปจนถึงเลือกจุดเข้าตรวจและวางเส้นทางทางบก–ทางเรือ
 
 Workflow หลักมี 2 แบบ:
 
 1. **ปลูกเสริม** — ปลูกแทรกในช่องว่างของป่าเดิม
-2. **ปลูกเต็มพื้นที่** — ปลูกครอบคลุมพื้นที่กว้างและมีแถวหรือกริดต่อเนื่อง
+2. **ปลูกเต็มพื้นที่** — ปลูกครอบคลุมพื้นที่กว้าง มีแถว กริด หรือ Planting Block ที่ระยะใกล้เคียงกัน
 
-> ผลทั้งหมดเป็น Candidate Evidence, Candidate Route และ Candidate Mission ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย ไม่ใช่ผลตรวจดินทางห้องปฏิบัติการ และไม่ใช่การรับรองความปลอดภัยของเส้นทาง
+> ผลทั้งหมดเป็น Candidate Evidence, Candidate Count, Candidate Route และ Candidate Mission ต้องผ่าน Human Review
 
-# เลือก Workflow ก่อน
+# เลือก Skill ตามงาน
 
 | งาน | Skill เริ่มต้น |
 |---|---|
 | วิเคราะห์ปลูกเสริมครบระบบ | `skills/00-enrichment-analysis-orchestrator/SKILL.md` |
 | วิเคราะห์ปลูกเต็มครบระบบ | `skills/10-full-area-planting-orchestrator/SKILL.md` |
 | อ่าน Orthomosaic และแบ่ง Tile | `skills/01-large-orthomosaic-reader/SKILL.md` |
+| Raw Crown Detection | `skills/11-full-area-tree-detector/SKILL.md` |
+| หาแนวและระยะปลูก | `skills/12-planting-grid-inference/SKILL.md` |
+| ตรวจจำนวนต้นด้วย Canopy + Spacing | `skills/21-spacing-guided-tree-count-validator/SKILL.md` |
+| วิเคราะห์อัตรารอด | `skills/13-full-area-mortality-analyzer/SKILL.md` |
 | จำแนกดิน–เลน–น้ำที่มองเห็น | `skills/16-surface-hydrology-condition-classifier/SKILL.md` |
 | แยกปาล์ม/มะพร้าวออกจากต้นจาก | `skills/17-palm-coconut-detector/SKILL.md` |
 | เลือกจุดที่ควรเข้าตรวจ | `skills/18-field-inspection-priority-analyzer/SKILL.md` |
@@ -46,7 +50,8 @@ skills/
 ├─ 17-palm-coconut-detector/
 ├─ 18-field-inspection-priority-analyzer/
 ├─ 19-multimodal-access-route-planner/
-└─ 20-field-inspection-mission-planner/
+├─ 20-field-inspection-mission-planner/
+└─ 21-spacing-guided-tree-count-validator/
 ```
 
 # กฎประหยัด Token
@@ -56,7 +61,7 @@ Codex ต้องอ่านเฉพาะ:
 1. `AGENTS.md`
 2. `skills/README.md`
 3. Skill ที่กำลังใช้
-4. Skill ก่อนหน้าเฉพาะ Output Contract เมื่อจำเป็น
+4. Output Contract ของ Skill ก่อนหน้าเท่าที่จำเป็น
 
 ห้ามอ่าน Skill ทั้ง Repository พร้อมกัน
 
@@ -71,25 +76,14 @@ summary_metrics
 warnings
 ```
 
-ตัวอย่าง Load Set:
-
-| งาน | อ่านเต็ม |
-|---|---|
-| นับต้นปลูกเต็ม | 01, 11 |
-| หา Grid | 12 และ Output Contract ของ 11 |
-| วิเคราะห์อัตรารอด | 13 และ Output Contract ของ 11–12 |
-| วงขอบเขตปลูกเต็ม | 14 และ Output Contract ของ 11–13 |
-| เลือกจุดเข้าตรวจ | 18 และ Analysis/QA Outputs |
-| วิเคราะห์เส้นทาง | 19 และ Output ของ 18 |
-| จัด Mission | 20 และ Output ของ 18–19 |
-
-# Workflow ปลูกเต็มพื้นที่
+# Workflow ปลูกเต็มพื้นที่ฉบับปรับใหม่
 
 ```text
 Orthomosaic
 → Skill 01 อ่านภาพและแบ่ง Tile
-→ Skill 11 ตรวจต้นปลูก
-→ Skill 12 หาแถว กริด และตำแหน่งต้นหาย
+→ Skill 11 สร้าง Raw Crown/Tree Candidates
+→ Skill 12 หา Reference Spacing, แนวแถว และ Pattern Blocks
+→ Skill 21 ตรวจว่าอะไรนับเป็นต้นได้จริง
 → Skill 13 วิเคราะห์อัตรารอด/ตาย
 → Skill 14 วงขอบเขตปลูกเต็ม
 → Skill 15 ตรวจ QA
@@ -103,7 +97,63 @@ Skill 17 แยก Palm/Coconut
 Skill 18 → 19 → 20 วางแผนเข้าตรวจภาคสนาม
 ```
 
-## Prompt ปลูกเต็มครบระบบ
+## ความเข้าใจใหม่สำหรับการนับต้น
+
+### จุดแดงไม่ใช่จำนวนต้น
+
+จุดจาก Detector เป็น Raw Candidate ต้องตรวจต่อว่า:
+
+- มีเรือนยอดจริงรองรับหรือไม่
+- อยู่บนศูนย์กลางพุ่มหรือไม่
+- สอดคล้องกับระยะปลูก แนวแถว กริด หรือจุดปลูกหรือไม่
+- เป็นจุดซ้ำในพุ่มเดียวหรือไม่
+- ตกบนดิน น้ำเปล่า ถนน วัชพืช หรือเงาหรือไม่
+
+### น้ำไม่ใช่พื้นที่ห้ามนับทั้งหมด
+
+```text
+จุดบนผิวน้ำ + ไม่มีพุ่ม = false_positive_on_water
+ต้นอยู่ในน้ำตื้น + เห็นเรือนยอดจริง = valid_tree_in_water_context
+```
+
+### เรือนยอดชิดกัน
+
+ห้ามใช้:
+
+```text
+1 canopy blob = 1 tree
+```
+
+ให้ใช้:
+
+```text
+Reference Spacing
++ Row/Grid/Planting Block
++ Planned Point เมื่อมี
++ Canopy Support
+```
+
+แม้ขอบเรือนยอดจะชนกัน แต่ถ้าศูนย์กลางต้นยังห่างใกล้เคียงกัน สามารถวาง Center ตาม Pattern ได้
+
+### ต้นใหญ่เดิม
+
+- ไม่นับเป็นต้นปลูก
+- ไม่ใช้ Fit Grid
+- ไม่แบ่งยอดย่อยภายในต้นใหญ่แล้วนับหลายต้น
+- จุดปลูกใต้พุ่มใหญ่เป็น `not_observable_under_existing_tree`
+- ห้ามเรียกเป็นต้นตายโดยอัตโนมัติ
+
+### จุดฟุ้ง
+
+จุดที่กระจายบนพื้นที่โล่งโดยไม่มี:
+
+- Canopy Support
+- แนวหรือ Pattern
+- Local Spacing Consistency
+
+ให้เป็น `unreliable_random_scatter_zone` และห้ามใช้คำนวณอัตรารอด
+
+# Prompt สำหรับแปลง 17-STC
 
 ```text
 อ่าน AGENTS.md และ skills/README.md
@@ -113,24 +163,57 @@ Plot code: 17-STC
 Input Orthomosaic:
 <ORTHOMOSAIC_PATH>
 
+Optional planned planting points:
+<PLANNED_PLANTING_POINTS_PATH>
+
 Output:
 <OUTPUT_PATH>\17-STC
 
-ทำตามลำดับ Skill 01, 11, 12, 13, 14 และ 15
-โหลด Skill ทีละตัว
+ทำตามลำดับ:
+1. Skill 01 อ่านและแบ่ง Tile
+2. Skill 11 สร้าง Raw Crown/Tree Candidates จากเรือนยอดจริง
+3. Skill 12 หา Reference Spacing, แนวแถว และ Planting Pattern Blocks
+4. Skill 21 ตรวจจำนวนต้นด้วย Canopy + Spacing + จุดปลูก
+5. Skill 13 วิเคราะห์อัตรารอด/ตาย
+6. Skill 14 วง Candidate Boundary
+7. Skill 15 ตรวจ QA
 
-วัตถุประสงค์:
-- นับต้นปลูก
-- หาแถวและกริด
-- หาตำแหน่งต้นหาย
-- วิเคราะห์อัตรารอด/ตาย
-- สร้าง Candidate Boundary
-- สร้าง QA Package
+กฎสำคัญ:
+- จุดแดงจาก Skill 11 ยังไม่ใช่จำนวนต้นสุดท้าย
+- ตัดจุดบนดินโล่ง น้ำเปล่า ถนน คันดิน วัชพืช และ Shadow-only
+- ต้นในน้ำตื้นนับได้เมื่อมีเรือนยอดจริง
+- เรือนยอดชิดกันให้นับจากระยะปลูกและแนว ไม่ใช้หนึ่งก้อนเท่ากับหนึ่งต้น
+- ต้นเดิมขนาดใหญ่ไม่ต้องนับและห้ามใช้ Fit Grid
+- จุดปลูกใต้ต้นใหญ่ให้เป็น not_observable
+- Grid ห้ามสร้างต้นรอดเมื่อไม่มี Canopy Evidence
+- แบ่งหลาย Pattern Block หากแนวหรือระยะเปลี่ยน
+- จุดฟุ้งที่ไม่มี Canopy/Pattern ให้ Flag เป็น Validation Failed
+- รายงาน Confirmed, Spacing-supported, Probable, Missing และ Not-observable แยกกัน
+- ห้ามตั้งสถานะ approved
 
-เรียก Skill 16 เมื่อ Surface/Hydrology ต่างกันชัด
-เรียก Skill 17 เมื่อพบต้นเดี่ยวทรงรัศมี
-หยุดให้ตรวจทุก Checkpoint
-ห้ามตั้งสถานะ approved
+หยุดให้ตรวจหลัง:
+1. Raw Detection Preview
+2. Reference Spacing และ Pattern Blocks
+3. False-positive / Existing Large Tree Preview
+4. Merged-canopy Center Preview
+5. Final Count Status
+6. Survival/Mortality Preview
+```
+
+# ผลลัพธ์หลักของ Skill 21
+
+```text
+validated_planted_tree_points.gpkg
+planting_point_status.gpkg
+false_positive_detections.gpkg
+existing_large_trees_validated.gpkg
+merged_canopy_clusters.gpkg
+planting_pattern_blocks.gpkg
+spacing_model.json
+tree_count_validation_metrics.json
+tree_count_validation_preview.png
+false_positive_preview.png
+merged_canopy_preview.png
 ```
 
 # Workflow ปลูกเสริม
@@ -148,132 +231,25 @@ Orthomosaic
 → Skill 09 ตรวจ QA
 ```
 
-Optional:
+ปลูกเสริมไม่ใช้ Grid ของปลูกเต็มไปบังคับช่องว่างป่าเดิม
+
+# Field Inspection Planning
 
 ```text
-Skill 16 Surface/Hydrology
-Skill 17 Palm/Coconut
-Skill 18 → 19 → 20 Field Inspection Plan
+Analysis/QA Outputs
+→ Skill 18 เลือกจุดที่ต้องตรวจ
+→ Skill 19 ประเมินทางบก/ทางเรือ
+→ Skill 20 จัด Mission, วัน, ทีม และ Checklist
 ```
 
-# แนวคิดการวางแผนเข้าตรวจ
-
-ระบบต้องแยก 2 คะแนน:
+ระบบต้องแยก:
 
 ```text
 evidence_priority_score = จำเป็นต้องตรวจมากเพียงใด
 access_burden_score     = เข้าถึงยากเพียงใด
 ```
 
-ห้ามลดความสำคัญของจุดเพียงเพราะไกล
-
-| ความจำเป็น | การเข้าถึง | การจัดการ |
-|---|---|---|
-| สูง | ง่าย/ปานกลาง | `inspect_now` |
-| สูง | ยาก/ไม่ทราบ | `special_mission` หรือ `route_scout_first` |
-| ปานกลาง | ง่าย | `bundle_opportunistically` |
-| ปานกลาง | ยาก | `remote_cluster_mission` เมื่อรวมหลายจุดคุ้มค่า |
-| ต่ำ | ง่าย | QA Control หรือแวะตรวจร่วม |
-| ต่ำ | ยาก | เลื่อนหรือ Remote Monitor เว้นแต่ขาดตัวแทนพื้นที่ |
-
-## จุดที่ควรเข้าตรวจ
-
-ตัวอย่าง Trigger:
-
-- กลุ่มต้นหายต่อเนื่อง
-- อัตรารอดต่ำ
-- `probable_missing`, `uncertain`, `not_observable` จำนวนมาก
-- Grid กับต้นที่ตรวจพบไม่ตรงกัน
-- ขอบเขต Confidence ต่ำ
-- โกงกางสับสนกับวัชพืช ต้นจาก หรือปาล์ม/มะพร้าว
-- น้ำขัง ร่องน้ำ หรือ Surface Zone สัมพันธ์กับการรอดต่ำ
-- ผลต่างจากภาพครั้งก่อนผิดปกติ
-- พื้นที่ห่างไกลที่ยังไม่มีตัวแทนตรวจ
-- High-confidence QA Control สำหรับตรวจความแม่นของระบบ
-
-# ข้อมูลเส้นทางที่ควรเตรียม
-
-```text
-road_access_lines
-trail_access_lines
-dike_or_embankment_lines
-boat_route_lines
-canal_or_tidal_channel_lines
-parking_points
-pier_points
-boat_landing_points
-plot_entry_points
-mode_transfer_points
-restricted_or_no_go_areas
-hazard_zones
-```
-
-เส้นทางจากภาพต้องระบุ Source และใช้เป็น Candidate จนกว่าทีมพื้นที่จะยืนยัน
-
-# Prompt เลือกจุดตรวจและวาง Route
-
-```text
-อ่าน AGENTS.md และ skills/README.md
-
-ใช้ตามลำดับ:
-1. skills/18-field-inspection-priority-analyzer/SKILL.md
-2. skills/19-multimodal-access-route-planner/SKILL.md
-3. skills/20-field-inspection-mission-planner/SKILL.md
-
-Plot code: 17-STC
-Analysis Output:
-<ANALYSIS_OUTPUT_PATH>
-
-Access Layers:
-<LAND_ROUTE_PATH>
-<BOAT_ROUTE_PATH>
-<ACCESS_POINT_PATH>
-<BARRIER_PATH>
-
-Output:
-<FIELD_PLAN_OUTPUT_PATH>
-
-เงื่อนไข:
-- เลือกจุดจากผลวิเคราะห์จริง ไม่สุ่มจากพื้นที่อย่างเดียว
-- แสดงเหตุผลของทุกจุด
-- แยก Evidence Priority กับ Access Burden
-- วิเคราะห์ทางบกและทางเรือเป็นทางเลือก
-- ใช้ Network Distance และเวลาไป–กลับ
-- คำนึงถึงการเดินช่วงสุดท้าย จุดขึ้นฝั่ง Tide, Permission และ Safety
-- จุดสำคัญแต่ไกลห้ามตัดทิ้ง ให้สร้าง Special Mission หรือรวมหลายจุด
-- มีทั้งจุดปัญหา จุดตัวแทน และ High-confidence QA Control
-- หยุดให้ตรวจหลัง Candidate Points, Route Options และ Mission Grouping
-- ห้ามตั้งสถานะ approved
-```
-
-# ผลลัพธ์ Field Planning
-
-```text
-inspection_priority_zones.gpkg
-inspection_candidate_points.gpkg
-inspection_priority_summary.csv
-inspection_route_options.gpkg
-inspection_access_assessment.csv
-selected_inspection_points.gpkg
-field_missions.gpkg
-mission_routes.gpkg
-mission_day_plan.csv
-inspection_backlog.csv
-field_checklist.csv
-field_mission_preview.png
-route_cards/
-```
-
-# ข้อควรระวัง
-
-- ระยะเส้นตรงไม่ใช่ระยะเข้าถึงจริง
-- คลองทุกเส้นไม่ได้แปลว่าเรือผ่านได้
-- คันดินทุกเส้นไม่ได้แปลว่าเดินหรือขับรถได้
-- จุดสำคัญและไกลต้องเพิ่มการวางแผน ไม่ใช่ถูกตัดออก
-- Route Candidate ต้องให้ทีมพื้นที่ยืนยัน
-- ต้องคิดเวลาไป–กลับ Buffer น้ำขึ้นน้ำลง การเปลี่ยนพาหนะ และความปลอดภัย
-- ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
-- สีภาพไม่ยืนยันความเค็ม pH หรือชนิดดิน
+ห้ามลดความสำคัญของจุดเพียงเพราะไกล จุดสำคัญแต่ไกลให้เป็น `special_mission`, `remote_cluster_mission` หรือ `route_scout_first`
 
 # สถานะผลลัพธ์
 
@@ -295,4 +271,4 @@ approved
 
 # หมายเหตุ
 
-Repository นี้เป็นชุด Skill และข้อกำหนดสำหรับให้ Codex พัฒนาและควบคุม Workflow หากยังไม่มี Python Pipeline ที่ทำงานครบ ต้องสร้างและทดสอบ Code ก่อนรัน Orthomosaic และวาง Route จริง
+Repository นี้เป็นชุด Skill และข้อกำหนดสำหรับให้ Codex พัฒนาและควบคุม Workflow หากยังไม่มี Python Pipeline ที่ทำงานครบ ต้องสร้างและทดสอบ Code ก่อนรัน Orthomosaic จริง
