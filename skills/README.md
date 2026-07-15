@@ -34,7 +34,7 @@ Machine-readable registry: `skills/registry.yaml`
 ## Full-area Planting
 
 ```text
-10 → 01 → 01b → 11 → 12 → 12b → 13 → 14 → 15
+10 → 01 → 01b → 11 → 12 → 12c → 12b → 13 → 14 → 15
 ```
 
 | ID | Skill | หน้าที่ |
@@ -42,12 +42,13 @@ Machine-readable registry: `skills/registry.yaml`
 | 10 | `full-area-planting-orchestrator` | ควบคุม Workflow ปลูกเต็ม |
 | 11 | `full-area-tree-detector` | สร้าง Raw Crown Candidates ยังไม่ใช่จำนวนสุดท้าย |
 | 12 | `planting-grid-inference` | หา Preliminary Spacing, Rows และ Pattern Blocks |
-| 12b | `spacing-guided-tree-count-validator` | กรองจุดฟุ้ง ต้นใหญ่ จุดผิดบริบท และนับเรือนยอดชิด |
+| 12c | `touching-crown-tree-counter` | แยก Crown Center ในเรือนยอดชิดจากภาพ + Local Spacing + 2D Row Support |
+| 12b | `spacing-guided-tree-count-validator` | รวมผล 11/12/12c กรองจุดฟุ้ง ต้นใหญ่ และตัดสิน Final Count |
 | 13 | `full-area-mortality-analyzer` | วิเคราะห์ Survival/Mortality จากผล 12b |
 | 14 | `full-area-boundary-delineator` | สร้าง Candidate Boundary จากผล Validated |
 | 15 | `full-area-qa-human-review` | QA ตั้งแต่ Raw ถึง Boundary |
 
-ห้ามข้าม 12b แล้วใช้ Raw Detection จาก 11 คำนวณอัตรารอดหรือวงขอบเขต
+ห้ามข้าม 12c เมื่อมีเรือนยอดชิด/รวมเป็นผืน และห้ามข้าม 12b แล้วใช้ Raw Detection คำนวณอัตรารอดหรือวงขอบเขต
 
 ## Optional Context
 
@@ -90,10 +91,11 @@ Machine-readable registry: `skills/registry.yaml`
 | Gap ปลูกเสริม | 07 | 02–06 |
 | Raw Detection ปลูกเต็ม | 11 | 01, 01b |
 | Preliminary Pattern | 12 | 11 |
-| ตรวจจำนวนต้นจริง | 12b | 11, 12 และ 01b/16/17 เมื่อใช้ |
+| แยกเรือนยอดชิด | 12c | 11, 12 และ 01b/16/17 เมื่อใช้ |
+| ตรวจจำนวนต้นจริง | 12b | 11, 12, 12c และ 01b/16/17 เมื่อใช้ |
 | Survival/Mortality | 13 | 12b, 12 |
 | Boundary ปลูกเต็ม | 14 | 12, 12b, 13 |
-| QA ปลูกเต็ม | 15 | 11–14 และ 12b |
+| QA ปลูกเต็ม | 15 | 11–14 รวม 12c/12b |
 | เลือกจุดตรวจ | 18 | 09 หรือ 15 |
 | Route | 19 | 18 |
 | Mission | 20 | 18–19 |
