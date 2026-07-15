@@ -1,132 +1,115 @@
 # AGENTS.md
 
-## Repository Purpose
+## Purpose
 
-Repository นี้ใช้พัฒนาและควบคุม Workflow วิเคราะห์แปลงปลูกเสริมจากภาพโดรนหรือ Orthomosaic ขนาดใหญ่
+ควบคุม Workflow วิเคราะห์แปลงปลูกเสริมและแปลงปลูกเต็มพื้นที่จาก Orthomosaic ขนาดใหญ่
 
-ผลลัพธ์เป็น Candidate Evidence จากภาพ ต้องผ่าน Human Review และไม่ใช่ขอบเขตตามกฎหมาย
+ผลลัพธ์เป็น Candidate Evidence ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย
 
-## Start Here
+## Mandatory token routing
 
-ก่อนทำงานทุกครั้งให้อ่าน:
+ห้ามอ่านทุก Skill พร้อมกัน
+
+อ่านตามลำดับเท่านั้น:
 
 1. `README.md`
 2. `skills/README.md`
-3. Skill เฉพาะงานที่ถูกเรียก
+3. Orchestrator หรือ Skill ที่ผู้ใช้เรียก
+4. Skill ก่อนหน้าเฉพาะ Output Contract เมื่อจำเป็น
 
-งานครบทั้งกระบวนการให้เริ่มจาก:
+เมื่อจบแต่ละขั้น ให้สรุป Output Path, Schema และ Warning แบบสั้น แล้วเริ่ม Session/Prompt ถัดไปด้วยไฟล์ผลลัพธ์แทนการส่งบริบทเดิมทั้งหมด
+
+## Choose one workflow
+
+### Enrichment planting
+
+ใช้เมื่อปลูกแทรกในช่องว่างของป่าเดิม มีวัชพืช ต้นจาก เรือนยอดปิด และรูปแบบไม่เป็นกริดต่อเนื่อง
+
+เริ่มที่:
 
 `skills/00-enrichment-analysis-orchestrator/SKILL.md`
 
-## Skill Separation Rule
+### Full-area planting
 
-ห้ามรวมหน้าที่ของ Skill โดยไม่จำเป็น:
+ใช้เมื่อต้นปลูกครอบคลุมพื้นที่กว้าง เห็นแถว กริด หรือระยะปลูกซ้ำ และช่องว่างส่วนใหญ่มีแนวโน้มเป็นต้นหายหรือต้นตาย
 
-- Skill 01 อ่าน Raster และแบ่ง Tile แต่ไม่จำแนกพืช
-- Skill 02 จำแนกสิ่งปกคลุมแต่ไม่สร้างขอบเขต
-- Skill 03 ตรวจโกงกาง Candidate แต่ไม่ยืนยันว่าเกิดจากการปลูก
-- Skill 04 ตรวจวัชพืชและการบดบัง
-- Skill 05 ตรวจต้นจาก
-- Skill 06 ตรวจป่าเดิม เงา และเรือนยอดปิด
-- Skill 07 วิเคราะห์ช่องว่างปลูกเสริม
-- Skill 08 สร้าง Candidate Boundary จากหลักฐานที่มีแล้ว
-- Skill 09 ตรวจ QA และเตรียม Human Review
+เริ่มที่:
 
-หากต้องใช้หลาย Skill ให้เรียกผ่าน Skill 00 และรายงาน Intermediate Output ทุกขั้น
+`skills/10-full-area-planting-orchestrator/SKILL.md`
 
-## Mandatory Interpretation
+ห้ามผสมกฎของสอง Workflow โดยไม่มีเหตุผล
 
-- ภาพใน `examples/` เป็น Crop จาก Orthomosaic ใช้สอนการตีความ ไม่ใช่พิกัดจริง
+## Shared raster rules
+
 - งานจริงต้องอ่าน GeoTIFF, COG หรือ VRT ที่มี CRS และ Affine Transform
 - ห้ามโหลด Orthomosaic ขนาดใหญ่ทั้งหมดเข้า RAM
-- ต้องใช้ Overview และ Tile/Window ที่มี Overlap
-- ห้ามใช้สีเพียงอย่างเดียว ต้องใช้ Color, Shape, Texture, Scale และ Context
-- พุ่มสีเข้มอาจเป็นโกงกาง เงา หรือป่าเดิม ต้องแยกด้วยหลักฐานอื่น
-- พื้นสีเขียวอ่อนละเอียดต่อเนื่องอาจเป็นวัชพืช แต่ต้องตรวจ Object Scale และ Texture
-- ต้นจากมีใบยาวแผ่เป็นรัศมี ต้องแยกเป็น `nypa_palm`
-- พื้นที่ใต้เรือนยอดปิดใช้ `closed_canopy_unknown` ห้ามใช้ `not_planted`
-- ภาพช่วงเวลาเดียวไม่สามารถยืนยันได้ว่าต้นเกิดจากการปลูก
+- ใช้ Overview และ Tile/Window พร้อม Overlap 10–20%
+- บันทึก Tile ID, Window, Transform, Bounds และ Source Raster
+- รวมผลใน CRS ต้นฉบับ ไม่รวมด้วย Local Pixel Coordinate
+- ห้ามใช้ Tile Edge เป็นขอบเขตจริง
 
-## Required Core Classes
+## Full-area pipeline
 
 ```text
-target_rhizophora_candidate
-weed_groundcover
-nypa_palm
-existing_woody_canopy
-natural_regeneration
-dead_dry_vegetation
-bare_mud
-open_water
-canal_or_tidal_channel
-shadow_unknown
-closed_canopy_unknown
-unknown_object
+Skill 01: inspect and tile
+→ Skill 11: detect planted-tree candidates
+→ Skill 12: infer rows and grid
+→ Skill 13: analyze survival and mortality
+→ Skill 14: delineate full-area boundary
+→ Skill 15: QA and human review
 ```
 
-## Required Gap Classes
+กฎสำคัญ:
+
+- แยกเงาและต้นเดิมขนาดใหญ่ออกจากต้นปลูก
+- ตำแหน่งต้นหายต้องมี Grid รองรับ
+- `not_observable` ไม่ใช่ต้นตาย
+- พื้นที่ต้นรอดต่ำยังอยู่ในขอบเขตได้เมื่อ Grid ต่อเนื่อง
+- สีพื้นน้ำหรือเลนไม่ใช่แนวแบ่งอัตโนมัติ
+
+## Enrichment pipeline
 
 ```text
-confirmed_enrichment_gap
-probable_enrichment_gap
-uncertain_enrichment_gap
-natural_regeneration_gap
-disturbed_open_area
-closed_canopy_unknown_gap
-excluded_water_gap
+Skill 01: inspect and tile
+→ Skill 02: land-cover classification
+→ Skill 03: Rhizophora candidates
+→ Skill 04: weed and obstruction
+→ Skill 05: Nypa palm
+→ Skill 06: existing canopy and occlusion
+→ Skill 07: enrichment gaps
+→ Skill 08: candidate boundary
+→ Skill 09: QA and human review
 ```
 
-`confirmed_enrichment_gap` ต้องมี Supporting Evidence มากกว่าลักษณะภาพเพียงอย่างเดียว เช่น Ground Truth, Planting Point หรือภาพก่อน–หลัง
+กฎสำคัญ:
 
-## Required Boundary Outputs
+- ห้ามใช้สีเพียงอย่างเดียว
+- แยกวัชพืช ต้นจาก ป่าเดิม น้ำ เลน เงา และเรือนยอดปิด
+- `closed_canopy_unknown` ไม่ใช่ `not_planted`
+- วิเคราะห์แบบ Gap-by-gap ไม่บังคับ Grid
+- ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
 
-```text
-enrichment_planting_core
-enrichment_evidence_boundary
-uncertain_enrichment_boundary
-excluded_area
-boundary_segment_confidence
-```
+## Required checkpoints
 
-## Full Pipeline
+### Full-area
 
-```text
-Large georeferenced orthomosaic
-→ Skill 01: inspect and tile
-→ Skill 02: classify land cover
-→ Skill 03: detect Rhizophora candidates
-→ Skill 04: classify weed and obstruction
-→ Skill 05: detect Nypa palm
-→ Skill 06: classify existing canopy and occlusion
-→ Skill 07: analyze enrichment gaps
-→ Skill 08: delineate candidate boundaries
-→ Skill 09: QA and human-review package
-```
+1. Tree Detection Preview
+2. Grid and Missing-position Preview
+3. Survival/Mortality Preview
+4. Candidate Boundary Preview
 
-## Required Checkpoints
-
-หยุดให้ผู้ใช้ตรวจอย่างน้อย:
+### Enrichment
 
 1. Classification Preview
 2. Target vs Weed vs Nypa Preview
 3. Gap Classification Preview
-4. Candidate Boundary and Warning Preview
+4. Candidate Boundary Preview
 
-ห้ามรันผ่าน Checkpoint โดยไม่แสดงผลหรือรายงานเหตุผลที่ไม่สามารถสร้างได้
+ห้ามข้าม Checkpoint โดยไม่แสดงผลหรือรายงานเหตุผล
 
-## Large Raster Rules
+## Status control
 
-- อ่าน Metadata ก่อนเสมอ
-- Tile เริ่มต้น 2048 หรือ 4096 Pixel
-- Overlap เริ่มต้น 15% และปรับได้ช่วง 10–20%
-- บันทึก Tile ID, Window, Transform, Bounds และ Source Raster
-- Prediction ใกล้ Tile Edge ต้องลดน้ำหนักหรือรวมกับ Tile ซ้อน
-- รวมผลใน CRS ต้นฉบับ ไม่รวมด้วย Local Pixel Coordinate
-- ห้ามสร้างเส้นตาม Tile Edge เป็นขอบเขตจริง
-
-## Human Review
-
-AI ใช้สถานะได้สูงสุด:
+AI ใช้ได้สูงสุด:
 
 ```text
 draft
