@@ -2,9 +2,9 @@
 
 ## Purpose
 
-ควบคุม Workflow วิเคราะห์แปลงปลูกเสริมและแปลงปลูกเต็มพื้นที่จาก Orthomosaic ขนาดใหญ่
+ควบคุม Workflow วิเคราะห์แปลงปลูกเสริมและแปลงปลูกเต็มพื้นที่จาก Orthomosaic ขนาดใหญ่ รวมถึงการแปลงผลวิเคราะห์เป็นแผนเข้าตรวจภาคสนามทางบกและทางเรือ
 
-ผลลัพธ์เป็น Candidate Evidence ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย และภาพไม่ยืนยันคุณสมบัติดินทางห้องปฏิบัติการ
+ผลลัพธ์เป็น Candidate Evidence, Candidate Route และ Candidate Mission ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย ไม่ใช่ผลตรวจดินทางห้องปฏิบัติการ และไม่ใช่การรับรองความปลอดภัยของเส้นทาง
 
 ## Mandatory token routing
 
@@ -19,7 +19,7 @@
 
 เมื่อจบแต่ละขั้น ให้สรุป Output Path, Schema และ Warning แบบสั้น แล้วเริ่มขั้นถัดไปด้วยไฟล์ผลลัพธ์แทนการส่งบริบทเดิมทั้งหมด
 
-## Choose one workflow
+## Choose one analysis workflow
 
 ### Enrichment planting
 
@@ -57,6 +57,30 @@
 - ห้ามเรียกทุก Crown แบบรัศมีว่า `nypa_palm`
 - เมื่อแยกชนิดไม่ได้ให้ใช้ `palm_unknown`
 
+### Skill 18 — Inspection Priority
+
+เรียกเมื่อมีผลวิเคราะห์แล้วและต้องการเลือกจุดที่ควรเข้าตรวจ
+
+- ใช้ความไม่แน่นอน ความเสียหาย ผลกระทบ การเปลี่ยนแปลง และความเป็นตัวแทน
+- ต้องมีทั้งจุดปัญหาและ High-confidence QA Control
+- ห้ามเลือกเฉพาะจุดใกล้ทางเข้า
+
+### Skill 19 — Land/Boat Access
+
+เรียกเมื่อมี Candidate Inspection Points และต้องวางเส้นทางเข้าทางบก/ทางเรือ
+
+- ใช้ Network Distance และเวลาเดินทาง ไม่ใช้ระยะเส้นตรง
+- แยก Land, Boat, Walk และ Transfer Cost
+- Candidate Route จากภาพต้องให้ทีมพื้นที่ยืนยัน
+
+### Skill 20 — Field Mission
+
+เรียกเมื่อมี Priority และ Access Assessment แล้ว
+
+- รวมจุดเป็น Mission, วัน, ทีม และ Checklist
+- จุดสำคัญแต่ไกลต้องเป็น `special_mission` หรือ `remote_cluster_mission`
+- ห้ามตัดจุด P1 ทิ้งเพียงเพราะไกล
+
 Optional Skill ต้องไม่ถูกอ่านเมื่อไม่มี Trigger
 
 ## Shared raster rules
@@ -79,11 +103,19 @@ Skill 01: inspect and tile
 → Skill 15: QA and human review
 ```
 
-Optional:
+Optional Analysis Context:
 
 ```text
 Skill 16: surface/hydrology context
 Skill 17: palm/coconut exclusion
+```
+
+Optional Field Planning:
+
+```text
+Skill 18: inspection priority
+→ Skill 19: land/boat access routes
+→ Skill 20: missions and day plan
 ```
 
 กฎสำคัญ:
@@ -114,6 +146,7 @@ Optional routing:
 ```text
 หลัง Skill 02 → Skill 16 เมื่อมี Surface/Hydrology Trigger
 หลัง Skill 05 → Skill 17 เมื่อมี Single Radial Crown Trigger
+หลัง Skill 09 → Skill 18 → 19 → 20 เมื่อขอ Field Plan
 ```
 
 กฎสำคัญ:
@@ -125,6 +158,32 @@ Optional routing:
 - ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
 - Surface Class ไม่ใช่ผลตรวจดิน
 
+## Field inspection decision rules
+
+ต้องรักษาสองคะแนนแยกกัน:
+
+```text
+evidence_priority_score
+access_burden_score
+```
+
+- Evidence Priority ตอบว่า “จำเป็นต้องตรวจหรือไม่”
+- Access Burden ตอบว่า “ต้องใช้ทรัพยากรมากเท่าไร”
+- ระยะไกลไม่ใช่เหตุผลลบจุดสำคัญ
+- จุดไกลหลายจุดให้พิจารณารวม Mission
+- จุดไกลความสำคัญต่ำสามารถเลื่อน แต่ต้องอยู่ใน Backlog
+- ต้องมีจุดตัวแทนทุก Stratum สำคัญและจุด QA ในพื้นที่ Confidence สูง
+
+## Access rules
+
+- ใช้เส้นทางบก ทางเดิน คันดิน คลอง ทางเรือ ท่าเรือ จุดขึ้นฝั่ง และจุด Transfer ที่มี Source ชัดเจน
+- Route จาก Orthomosaic ใช้ได้สูงสุดเป็น Candidate
+- ห้ามถือคลองทุกเส้นว่าเรือผ่านได้
+- ห้ามถือคันดินทุกเส้นว่าเดินหรือขับรถได้
+- หากไม่มี Network ให้ใช้ `access_network_missing` ไม่สร้างเส้นตรงเป็น Route
+- ต้องรวมเวลาไป–กลับ, Off-network Walk, Mode Transfer, Tide Wait, Permission และ Safety Buffer
+- AI ห้ามรับรองความปลอดภัยของ Route
+
 ## Required checkpoints
 
 ### Full-area
@@ -132,7 +191,7 @@ Optional routing:
 1. Tree Detection Preview
 2. Grid and Missing-position Preview
 3. Survival/Mortality Preview
-4. Optional Surface/Palm Preview เมื่อเรียกใช้
+4. Optional Surface/Palm Preview
 5. Candidate Boundary Preview
 
 ### Enrichment
@@ -142,6 +201,13 @@ Optional routing:
 3. Target vs Weed vs Nypa vs Other Palm Preview
 4. Gap Classification Preview
 5. Candidate Boundary Preview
+
+### Field Planning
+
+1. Candidate Inspection Points พร้อมเหตุผล
+2. Land/Boat Route Options
+3. Mission Grouping และจุดที่เลื่อน
+4. Day Plan และ Field Checklist
 
 ห้ามข้าม Checkpoint โดยไม่แสดงผลหรือรายงานเหตุผล
 
@@ -163,4 +229,4 @@ rejected
 approved
 ```
 
-ทุกผลลัพธ์ต้องระบุข้อจำกัด ข้อมูลที่ขาด และจุดที่ต้องตรวจภาคสนาม
+ทุกผลลัพธ์ต้องระบุข้อจำกัด ข้อมูลที่ขาด จุดที่ต้องตรวจภาคสนาม และ Route ที่ยังไม่ยืนยัน
