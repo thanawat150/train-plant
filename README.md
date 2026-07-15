@@ -1,227 +1,191 @@
 # train-plant
 
-ชุด Skill สำหรับช่วยวิเคราะห์ **แปลงปลูกเสริมในพื้นที่ป่าชายเลน** จากภาพโดรนหรือ Orthomosaic ขนาดใหญ่ ตั้งแต่การอ่านภาพ จำแนกสิ่งปกคลุม ตรวจโกงกาง แยกวัชพืชและต้นจาก วิเคราะห์ช่องว่าง วง Candidate Boundary และตรวจ QA
+ชุด Skill สำหรับวิเคราะห์ภาพโดรนและ Orthomosaic ของงานปลูกป่าชายเลน แยกเป็น 2 Workflow ชัดเจน:
 
-> ผลลัพธ์เป็นหลักฐานจากภาพและ Candidate Result ต้องผ่าน Human Review ก่อนใช้งานจริง ไม่ใช่ขอบเขตตามกฎหมาย และภาพช่วงเวลาเดียวไม่สามารถยืนยันได้ว่าต้นไม้เกิดจากการปลูก
+1. **ปลูกเสริม** — ปลูกแทรกในช่องว่างของป่าเดิม
+2. **ปลูกเต็มพื้นที่** — ปลูกครอบคลุมพื้นที่กว้างและมีแถวหรือกริดต่อเนื่อง
 
-## ความเข้าใจจากภาพตัวอย่าง
+> ผลทั้งหมดเป็น Candidate Evidence จากภาพ ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย และภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
 
-ระบบต้องแยกอย่างน้อย:
+# เลือก Workflow ก่อน
 
-- `target_rhizophora_candidate` — พุ่มที่มีลักษณะคล้ายโกงกางเป้าหมาย มักเป็นก้อนค่อนข้างเข้มกว่า Groundcover
-- `weed_groundcover` — วัชพืชหรือพืชคลุมดิน มักเป็นผืนละเอียด สีเขียวอ่อนหรือเขียวเหลือง
-- `nypa_palm` — ต้นจาก มีใบยาวแผ่เป็นรัศมีคล้ายพัดหรือดาว
-- `existing_woody_canopy` — ป่าเดิม พุ่มใหญ่ หลายขนาด หลายเฉด และ Texture หยาบ
-- `closed_canopy_unknown` — พื้นที่ใต้เรือนยอดปิดที่มองไม่เห็น ห้ามสรุปว่าไม่มีการปลูก
-- `dead_dry_vegetation`, `bare_mud`, `water`, `shadow_unknown` และ Class อื่นที่อาจรบกวน
+| ลักษณะภาพ | Workflow | Skill เริ่มต้น |
+|---|---|---|
+| ป่าเดิมหนาแน่น มีโกงกางปลูกแทรก วัชพืช ต้นจาก และช่องว่างเป็นหย่อม | ปลูกเสริม | `skills/00-enrichment-analysis-orchestrator/SKILL.md` |
+| ต้นปลูกกระจายทั่วพื้นที่ เห็นแนวแถว กริด หรือระยะปลูกซ้ำ | ปลูกเต็มพื้นที่ | `skills/10-full-area-planting-orchestrator/SKILL.md` |
+| ต้องการอ่านภาพใหญ่และแบ่ง Tile เท่านั้น | ใช้ร่วมกัน | `skills/01-large-orthomosaic-reader/SKILL.md` |
 
-ห้ามใช้สีเพียงอย่างเดียว ต้องพิจารณา **Color + Shape + Texture + Scale + Spatial Context** ร่วมกัน
+ห้ามใช้ Workflow ปลูกเสริมกับแปลงปลูกเต็ม และห้ามใช้ Grid ของปลูกเต็มไปบังคับพื้นที่ปลูกเสริม
 
-## โครงสร้าง Skill
+# กฎประหยัด Token
+
+Codex ต้องอ่านเฉพาะ:
+
+1. `AGENTS.md`
+2. `skills/README.md`
+3. Skill ที่ผู้ใช้เรียก
+4. Skill ก่อนหน้าที่เป็น Input โดยอ่านเฉพาะ Output Contract เมื่อจำเป็น
+
+ห้ามอ่าน Skill ทั้ง Repository พร้อมกัน
+
+ตัวอย่าง:
+
+- ต้องการนับต้นปลูกเต็ม: อ่าน Skill 01 และ 11 เท่านั้น
+- ต้องการหา Grid: อ่าน Skill 11 และ 12 เท่านั้น
+- ต้องการวงขอบเขตปลูกเต็ม: อ่าน Output Contract ของ 11–13 และอ่าน Skill 14 เต็ม
+- ต้องการแยกต้นจากในปลูกเสริม: อ่าน Skill 01 และ 05 เท่านั้น
+- งานเต็มระบบ: ใช้ Orchestrator 00 หรือ 10 ให้เรียก Skill ทีละตัว
+
+# โครงสร้าง Skill
 
 ```text
-AGENTS.md
-README.md
 skills/
-├─ README.md
 ├─ 00-enrichment-analysis-orchestrator/
-│  └─ SKILL.md
 ├─ 01-large-orthomosaic-reader/
-│  └─ SKILL.md
 ├─ 02-mangrove-land-cover-classifier/
-│  └─ SKILL.md
 ├─ 03-rhizophora-crown-detector/
-│  └─ SKILL.md
 ├─ 04-weed-groundcover-classifier/
-│  └─ SKILL.md
 ├─ 05-nypa-palm-detector/
-│  └─ SKILL.md
 ├─ 06-existing-canopy-occlusion/
-│  └─ SKILL.md
 ├─ 07-enrichment-gap-analyzer/
-│  └─ SKILL.md
 ├─ 08-enrichment-boundary-delineator/
-│  └─ SKILL.md
-└─ 09-enrichment-qa-human-review/
-   └─ SKILL.md
+├─ 09-enrichment-qa-human-review/
+├─ 10-full-area-planting-orchestrator/
+├─ 11-full-area-tree-detector/
+├─ 12-planting-grid-inference/
+├─ 13-full-area-mortality-analyzer/
+├─ 14-full-area-boundary-delineator/
+└─ 15-full-area-qa-human-review/
 ```
 
-โฟลเดอร์ `planting-evidence-boundary/` เป็นเอกสารและตัวอย่างเดิม ใช้เป็น Reference และ Compatibility Router เท่านั้น งานใหม่ให้เริ่มจาก `skills/`
+# คำสั่งปลูกเต็มพื้นที่
 
-# เริ่มใช้งาน
-
-## 1. เตรียม Orthomosaic
-
-แนะนำให้เก็บภาพจริงไว้นอก Git Repository เช่น:
+## รันครบทั้งระบบ
 
 ```text
-D:\Drone\Enrichment_Project\Input\plot_001_orthomosaic.tif
-D:\Drone\Enrichment_Project\Outputs\plot_001\
-```
-
-รองรับข้อมูลที่ GDAL/Rasterio อ่านได้ เช่น GeoTIFF, COG และ VRT โดยควรมี CRS และ Affine Transform
-
-อย่านำ Orthomosaic หลาย GB เข้า Git โดยตรง ภาพใน `examples/` เป็นเพียง Crop สำหรับสอนการตีความ
-
-## 2. เปิด Repository ใน Codex
-
-ให้ Codex อ่าน `AGENTS.md` ก่อนทุกครั้ง
-
-## 3. ใช้คำสั่งตามงาน
-
-### A. วิเคราะห์ครบทั้งระบบ
-
-```text
-อ่าน AGENTS.md และใช้ Skill
-skills/00-enrichment-analysis-orchestrator/SKILL.md
+อ่าน AGENTS.md และ skills/README.md
+ใช้ skills/10-full-area-planting-orchestrator/SKILL.md
 
 Input Orthomosaic:
-D:\Drone\Enrichment_Project\Input\plot_001_orthomosaic.tif
+D:\Drone\Full_Area\Input\plot_001_orthomosaic.tif
 
 Output:
-D:\Drone\Enrichment_Project\Outputs\plot_001
+D:\Drone\Full_Area\Outputs\plot_001
 
-ให้รัน Workflow ครบตั้งแต่ตรวจ Raster, แบ่ง Tile, จำแนกสิ่งปกคลุม,
-ตรวจโกงกาง, แยกวัชพืชและต้นจาก, วิเคราะห์เรือนยอดปิด,
-สร้าง Enrichment Gap, Candidate Boundary และ QA Package
-
-หยุดให้ตรวจหลัง Classification, หลัง Target Detection และหลัง Candidate Boundary
+ให้ทำตามลำดับ Skill 01, 11, 12, 13, 14 และ 15
+โหลดและอ่าน Skill ทีละตัวเท่านั้น
+หยุดให้ตรวจหลัง Tree Detection, Grid Inference,
+Survival/Mortality และ Candidate Boundary
 ห้ามตั้งสถานะ approved
 ```
 
-### B. ตรวจภาพและแบ่ง Tile เท่านั้น
+## ตรวจและนับต้นเท่านั้น
 
 ```text
-ใช้ skills/01-large-orthomosaic-reader/SKILL.md
-ตรวจ Metadata ของ Orthomosaic และสร้าง Overview, Tile Index และ Tile Manifest
-ห้ามวิเคราะห์ชนิดพืชและห้ามโหลดภาพทั้งหมดเข้า RAM
+อ่านเฉพาะ AGENTS.md, skills/README.md,
+skills/01-large-orthomosaic-reader/SKILL.md และ
+skills/11-full-area-tree-detector/SKILL.md
+
+ตรวจต้นปลูกเป็นรายพุ่ม แยกเงาและต้นเดิมขนาดใหญ่
+ป้องกันการนับซ้ำระหว่าง Tile
+ห้ามสร้าง Grid หรือ Boundary
 
 Input: <ORTHOMOSAIC_PATH>
 Output: <OUTPUT_PATH>
 ```
 
-### C. จำแนกสิ่งปกคลุม
+## หาแถว กริด และตำแหน่งต้นหาย
 
 ```text
-ใช้ skills/02-mangrove-land-cover-classifier/SKILL.md
-จำแนกโกงกางเป้าหมายเบื้องต้น วัชพืช ต้นจาก ป่าเดิม น้ำ เลน เงา
-เรือนยอดปิด และ Class ที่ไม่มั่นใจ
-สร้าง Class Raster, Confidence Raster และ Preview
+อ่านเฉพาะ skills/12-planting-grid-inference/SKILL.md
+ใช้ planted_tree_candidates.gpkg ที่มีอยู่แล้ว
 
-Input: <ORTHOMOSAIC_OR_TILE_MANIFEST>
+สร้าง Planting Rows, Grid Blocks, ระยะต้น ระยะแถว
+และ expected_missing_positions
+ห้ามตรวจต้นใหม่และห้ามสร้าง Boundary
+
+Input: <TREE_DETECTION_OUTPUT>
 Output: <OUTPUT_PATH>
 ```
 
-### D. ตรวจและนับพุ่มโกงกาง
+## วิเคราะห์อัตรารอด
 
 ```text
-ใช้ skills/03-rhizophora-crown-detector/SKILL.md
-ตรวจ target_rhizophora_candidate เป็นรายพุ่ม
-ใช้ Weed, Nypa, Shadow และ Existing Canopy เป็น Exclusion Context
-ป้องกันการนับซ้ำระหว่าง Tile และสร้าง Detection Preview
+อ่านเฉพาะ skills/13-full-area-mortality-analyzer/SKILL.md
+ใช้ผล Tree Detection และ Grid ที่มีอยู่แล้ว
 
-Input: <ORTHOMOSAIC_OR_TILE_MANIFEST>
+แยก surviving, probable_missing, uncertain และ not_observable
+แสดงสูตร ตัวหาร และอัตรารอดแยกตาม Grid Block
+ห้ามถือ not_observable เป็นต้นตาย
+
+Input: <TREE_AND_GRID_OUTPUTS>
 Output: <OUTPUT_PATH>
 ```
 
-### E. จำแนกวัชพืช
+## วงขอบเขตปลูกเต็ม
 
 ```text
-ใช้ skills/04-weed-groundcover-classifier/SKILL.md
-แยก weed_groundcover, mixed_weed_and_target และ weed_obstruction
-ห้ามสรุปว่าพื้นที่วัชพืชไม่มีต้นปลูก
+อ่านเฉพาะ skills/14-full-area-boundary-delineator/SKILL.md
+ใช้ผลต้น กริด และ Survival/Mortality ที่มีอยู่แล้ว
 
-Input: <ORTHOMOSAIC_OR_TILE_MANIFEST>
+สร้าง full_area_planting_core,
+full_area_planting_evidence_boundary และ
+full_area_uncertain_edge
+
+รวม Mortality Gap เมื่อ Grid ยังต่อเนื่อง
+ห้ามใช้ Convex Hull เป็นค่าเริ่มต้น
+ห้ามตั้งสถานะ approved
+
+Input: <TREE_GRID_MORTALITY_OUTPUTS>
 Output: <OUTPUT_PATH>
 ```
 
-### F. ตรวจต้นจาก
+# คำสั่งปลูกเสริม
 
 ```text
-ใช้ skills/05-nypa-palm-detector/SKILL.md
-ตรวจต้นจากจากรูปทรงใบแบบรัศมีและ Texture ของใบยาว
-แยกออกจากโกงกาง ป่าเดิม และ Crown ชนิดอื่น
+อ่าน AGENTS.md และ skills/README.md
+ใช้ skills/00-enrichment-analysis-orchestrator/SKILL.md
 
-Input: <ORTHOMOSAIC_OR_TILE_MANIFEST>
-Output: <OUTPUT_PATH>
+Input Orthomosaic:
+D:\Drone\Enrichment\Input\plot_001_orthomosaic.tif
+
+Output:
+D:\Drone\Enrichment\Outputs\plot_001
+
+แยกโกงกาง Candidate, วัชพืช, ต้นจาก, ป่าเดิม,
+เรือนยอดปิด น้ำ เลน เงา และช่องว่างปลูกเสริม
+วิเคราะห์แบบ Gap-by-gap
+หยุดให้ตรวจทุก Checkpoint
+ห้ามตั้งสถานะ approved
 ```
 
-### G. วิเคราะห์ช่องว่างปลูกเสริม
+# ความแตกต่างหลัก
 
-```text
-ใช้ skills/07-enrichment-gap-analyzer/SKILL.md
-ใช้ผลโกงกาง วัชพืช ต้นจาก ป่าเดิม น้ำ เลน เงา และเรือนยอดปิด
-วิเคราะห์ทีละ Gap และสร้าง confirmed, probable, uncertain,
-natural_regeneration และ disturbed_open_area
-ยังไม่ต้องสร้าง Polygon ขอบเขตสุดท้าย
+## ปลูกเต็มพื้นที่
 
-Input Layers: <CLASS_AND_DETECTION_OUTPUTS>
-Output: <OUTPUT_PATH>
-```
+- ใช้แนวแถวและกริดเป็นหลักฐานหลัก
+- ตำแหน่งที่ต้นหายอาจเป็น Mortality Gap
+- ขอบเขตสามารถรวมพื้นที่ต้นรอดต่ำได้ หาก Grid ยังต่อเนื่อง
+- ต้นเดิมขนาดใหญ่และเงาต้องถูกแยกออกก่อน Fit Grid
 
-### H. สร้าง Candidate Boundary
+## ปลูกเสริม
 
-```text
-ใช้ skills/08-enrichment-boundary-delineator/SKILL.md
-สร้าง enrichment_planting_core, enrichment_evidence_boundary
-และ uncertain_enrichment_boundary จาก Gap Candidates ที่มีอยู่
-รักษาคลอง น้ำ ป่าเดิม และรอยเว้าที่มีเหตุผล
-ห้ามใช้ Convex Hull เป็นค่าเริ่มต้นและห้ามตั้งสถานะ approved
+- วิเคราะห์ทีละช่องว่างของป่าเดิม
+- ไม่บังคับให้มีกริดสม่ำเสมอ
+- ต้องแยกวัชพืช ต้นจาก ป่าเดิม และเรือนยอดปิด
+- พบโกงกางจากภาพยังไม่ยืนยันว่าเกิดจากการปลูก
 
-Input Layers: <GAP_AND_EVIDENCE_LAYERS>
-Output: <OUTPUT_PATH>
-```
+# Input ที่แนะนำ
 
-### I. ตรวจ QA อย่างเดียว
+- GeoTIFF, COG หรือ VRT ที่มี CRS และ Affine Transform
+- Optional AOI, PDD หรือขอบเขตแผนงาน
+- จุดปลูกหรือข้อมูลภาคสนาม
+- ภาพก่อน–หลังปลูก
+- DSM/DTM/CHM หากมี
 
-```text
-ใช้ skills/09-enrichment-qa-human-review/SKILL.md
-ตรวจ Candidate Outputs ที่มีอยู่ สร้าง QA Metrics, Warning Layers,
-Debug Previews และ Review Checklist
-ห้ามแก้ผลให้ผ่านเอง
+อย่านำ Orthomosaic หลาย GB เข้า Git โดยตรง ให้เก็บไว้ในเครื่องหรือ Object Storage
 
-Input Directory: <ANALYSIS_OUTPUT_PATH>
-Output: <QA_OUTPUT_PATH>
-```
-
-### J. ให้ Codex อธิบายภาพ Crop ก่อนพัฒนา
-
-```text
-อ่านภาพ Crop และไฟล์ตัวอย่างที่เกี่ยวข้องก่อน
-ยังห้ามเขียน Code และห้ามสร้าง Polygon
-
-ให้รายงาน:
-1. ส่วนที่น่าจะเป็นโกงกางเป้าหมาย
-2. ส่วนที่เป็นวัชพืช
-3. ส่วนที่เป็นต้นจาก
-4. ป่าเดิมและเรือนยอดปิด
-5. น้ำ เลน เงา และสิ่งรบกวน
-6. ส่วนที่มั่นใจและไม่มั่นใจ
-7. Class ที่ควรใช้ Label
-8. ข้อมูลเพิ่มเติมที่ต้องมีเพื่อยืนยันว่าเป็นการปลูก
-```
-
-# ผลลัพธ์หลักของ Full Pipeline
-
-```text
-raster_metadata.json
-tile_index.gpkg
-land_cover_class.tif
-rhizophora_candidates.gpkg
-weed_groundcover.tif
-nypa_palm_candidates.gpkg
-closed_canopy_unknown.tif
-enrichment_gap_candidates.gpkg
-enrichment_planting_core.gpkg
-enrichment_evidence_boundary.gpkg
-uncertain_enrichment_boundary.gpkg
-boundary_segment_confidence.gpkg
-qa_report.json
-review_package/
-analysis_manifest.json
-```
-
-# สถานะงาน
+# สถานะผลลัพธ์
 
 AI ใช้ได้สูงสุด:
 
@@ -231,7 +195,7 @@ needs_human_review
 rework
 ```
 
-สถานะต่อไปนี้ต้องมาจากมนุษย์:
+มนุษย์เท่านั้นที่ตั้ง:
 
 ```text
 reviewed
@@ -239,6 +203,6 @@ rejected
 approved
 ```
 
-# ข้อจำกัด
+# หมายเหตุ
 
-Repository นี้เป็นชุด Skill, กฎ, ตัวอย่าง และคำสั่งสำหรับให้ Codex พัฒนาหรือควบคุม Workflow หาก Repository ยังไม่มีโปรแกรมประมวลผลที่ทำงานครบ Codex ต้องสร้างและทดสอบ Code ตาม Skill ก่อน จึงจะสามารถรัน Orthomosaic จริงได้
+Repository นี้เป็นชุด Skill และข้อกำหนดสำหรับให้ Codex พัฒนาและควบคุม Workflow หากยังไม่มี Python Pipeline ที่ทำงานครบ ต้องสร้างและทดสอบ Code ก่อนรัน Orthomosaic จริง
