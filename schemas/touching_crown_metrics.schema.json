@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Train Plant Touching Crown Metrics",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "plot_code",
+    "validation_status",
+    "input_cluster_count",
+    "candidate_center_count",
+    "confirmed_count",
+    "probable_count",
+    "unresolved_cluster_count",
+    "grid_created_tree_count",
+    "center_without_canopy_count",
+    "cluster_processed_ratio",
+    "estimated_count_min",
+    "estimated_count_max"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "project_id": {"type": "string"},
+    "plot_code": {"type": "string"},
+    "analysis_version": {"type": ["string", "null"]},
+    "validation_status": {"enum": ["passed", "passed_with_warnings", "failed", "needs_human_review", "rework"]},
+    "input_cluster_count": {"type": "integer", "minimum": 0},
+    "large_connected_cluster_count": {"type": "integer", "minimum": 0},
+    "candidate_center_count": {"type": "integer", "minimum": 0},
+    "confirmed_count": {"type": "integer", "minimum": 0},
+    "spacing_supported_count": {"type": "integer", "minimum": 0},
+    "probable_count": {"type": "integer", "minimum": 0},
+    "unresolved_cluster_count": {"type": "integer", "minimum": 0},
+    "existing_large_tree_excluded_count": {"type": "integer", "minimum": 0},
+    "road_or_dike_excluded_count": {"type": "integer", "minimum": 0},
+    "groundcover_excluded_count": {"type": "integer", "minimum": 0},
+    "duplicate_center_removed_count": {"type": "integer", "minimum": 0},
+    "grid_created_tree_count": {"const": 0},
+    "center_without_canopy_count": {"const": 0},
+    "cluster_processed_ratio": {"const": 1.0},
+    "estimated_count_min": {"type": "integer", "minimum": 0},
+    "estimated_count_max": {"type": "integer", "minimum": 0},
+    "center_on_canopy_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "unresolved_area_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "single_axis_rejection_count": {"type": "integer", "minimum": 0},
+    "low_resolution_cluster_count": {"type": "integer", "minimum": 0},
+    "center_spacing_residual_median": {"type": ["number", "null"], "minimum": 0},
+    "center_spacing_residual_p95": {"type": ["number", "null"], "minimum": 0},
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "severity": {"enum": ["info", "warning", "critical"]},
+          "message": {"type": "string"},
+          "geometry_ref": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}
