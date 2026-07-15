@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Train Plant Project Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "plot_code",
+    "workflow_requested",
+    "source_raster",
+    "output_directory",
+    "preflight_status",
+    "input_layers",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "project_id": {"type": "string", "minLength": 1},
+    "plot_code": {"type": "string", "minLength": 1},
+    "workflow_requested": {"enum": ["enrichment", "full_area", "field_plan", "feedback", "evaluation", "image_demo"]},
+    "source_raster": {"type": "string"},
+    "acquisition_date": {"type": ["string", "null"], "format": "date"},
+    "planting_date": {"type": ["string", "null"], "format": "date"},
+    "working_crs": {"type": ["string", "null"]},
+    "pixel_size": {"type": ["number", "null"], "exclusiveMinimum": 0},
+    "config_path": {"type": ["string", "null"]},
+    "output_directory": {"type": "string"},
+    "preflight_status": {"enum": ["ready", "ready_with_warnings", "blocked", "image_demo_only"]},
+    "input_layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "role", "source_class", "reliability"],
+        "properties": {
+          "path": {"type": "string"},
+          "role": {"type": "string"},
+          "source_class": {"enum": ["surveyed_field", "contract_or_approved_plan", "existing_gis", "human_digitized_from_orthomosaic", "model_inferred", "unknown"]},
+          "reliability": {"enum": ["R1_verified_field_or_approved", "R2_trusted_existing_gis", "R3_human_digitized_candidate", "R4_model_inferred", "R5_unknown"]},
+          "crs": {"type": ["string", "null"]},
+          "acquisition_date": {"type": ["string", "null"], "format": "date"}
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "severity": {"enum": ["info", "warning", "critical"]},
+          "message": {"type": "string"},
+          "input_ref": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}
