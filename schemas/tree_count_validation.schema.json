@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Train Plant Tree Count Validation Metrics",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "plot_code",
+    "validation_status",
+    "grid_refit_required",
+    "raw_detection_count",
+    "validated_confirmed_count",
+    "estimated_tree_count_min",
+    "estimated_tree_count_max"
+  ],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "project_id": {"type": "string"},
+    "plot_code": {"type": "string"},
+    "analysis_version": {"type": ["string", "null"]},
+    "grid_model_version": {"type": ["string", "null"]},
+    "validation_status": {"enum": ["passed", "passed_with_warnings", "failed", "needs_human_review"]},
+    "grid_refit_required": {"type": "boolean"},
+    "grid_refit_iteration": {"type": "integer", "minimum": 0},
+    "raw_detection_count": {"type": "integer", "minimum": 0},
+    "validated_confirmed_count": {"type": "integer", "minimum": 0},
+    "validated_spacing_supported_count": {"type": "integer", "minimum": 0},
+    "probable_merged_canopy_count": {"type": "integer", "minimum": 0},
+    "estimated_tree_count_min": {"type": "integer", "minimum": 0},
+    "estimated_tree_count_max": {"type": "integer", "minimum": 0},
+    "existing_large_tree_count": {"type": "integer", "minimum": 0},
+    "false_positive_bare_ground_count": {"type": "integer", "minimum": 0},
+    "false_positive_water_count": {"type": "integer", "minimum": 0},
+    "false_positive_road_count": {"type": "integer", "minimum": 0},
+    "false_positive_shadow_count": {"type": "integer", "minimum": 0},
+    "duplicate_detection_count": {"type": "integer", "minimum": 0},
+    "grid_only_detection_count": {"type": "integer", "minimum": 0},
+    "off_grid_tree_count": {"type": "integer", "minimum": 0},
+    "unresolved_merged_canopy_cluster_count": {"type": "integer", "minimum": 0},
+    "not_observable_count": {"type": "integer", "minimum": 0},
+    "crown_support_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "pattern_support_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "random_scatter_ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "severity": {"enum": ["info", "warning", "critical"]},
+          "message": {"type": "string"},
+          "geometry_ref": {"type": ["string", "null"]}
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"grid_refit_required": {"const": false}}},
+      "then": {},
+      "else": {"properties": {"validation_status": {"enum": ["failed", "needs_human_review", "passed_with_warnings"]}}}
+    }
+  ]
+}
