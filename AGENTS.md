@@ -63,18 +63,23 @@ Optional: 16 Surface/Hydrology, 17 Palm/Coconut
 
 ```text
 10 orchestrator
-01 → 01b → 11 → 12 → 12b → 13 → 14 → 15
+01 → 01b → 11 → 12 → 12c → 12b → 13 → 14 → 15
 ```
 
 หลักสำคัญ:
 
 - Skill 11 เป็น Raw Detection ไม่ใช่จำนวนสุดท้าย
 - Skill 12 สร้าง Preliminary Spacing/Pattern
-- Skill 12b ตรวจ Canopy + Spacing + จุดปลูก
+- Skill 12c แยก Crown Center ในเรือนยอดชิดจากหลักฐานภาพ
+- Skill 12b ตรวจ Canopy + Spacing + จุดปลูกและตัดสิน Final Class
+- ห้ามข้าม 12c เมื่อมี Touching/Merged/Closed-canopy Cluster
 - ห้ามข้าม 12b ไปคำนวณอัตรารอดหรือวง Boundary
 - Grid ห้ามสร้างต้นที่ไม่มี Canopy Evidence
+- `grid_created_tree_count` ต้องเท่ากับ 0
+- `center_without_canopy_count` ต้องเท่ากับ 0
 - น้ำไม่ใช่ Exclusion ทั้งหมด แต่จุดบนผิวน้ำที่ไม่มีพุ่มเป็น False Positive
 - เรือนยอดชิดกันห้ามใช้ `1 blob = 1 tree`
+- ภาพละเอียดไม่พอให้ใช้ Unresolved ห้ามบังคับแยก Center
 - ต้นเดิมขนาดใหญ่ไม่นับ ไม่ใช้ Fit Grid และจุดใต้พุ่มเป็น Not Observable
 - รองรับหลาย Pattern Block โดยเฉพาะแปลงนากุ้ง
 
@@ -162,11 +167,12 @@ Full-area:
 
 1. Raw Detection
 2. Preliminary Spacing/Pattern
-3. 12b False-positive/Large-tree/Merged-canopy Validation
-4. Final Count Status
-5. Survival/Mortality
-6. Boundary
-7. QA
+3. 12c Touching Crown Centers / Unresolved
+4. 12b False-positive/Large-tree/Final Validation
+5. Final Count Status
+6. Survival/Mortality
+7. Boundary
+8. QA
 
 Enrichment:
 
@@ -184,4 +190,4 @@ Field Plan:
 
 ## Failure Rule
 
-เมื่อ Input, Pattern, Validation, Route หรือ Ground Truth ไม่เพียงพอ ให้หยุดหรือส่ง `needs_human_review` ห้ามสร้างข้อมูลขึ้นมาเพื่อให้ Workflow ผ่าน
+เมื่อ Input, Pattern, Resolution, Touching Crown Validation, Final Validation, Route หรือ Ground Truth ไม่เพียงพอ ให้หยุดหรือส่ง `needs_human_review` ห้ามสร้างข้อมูลขึ้นมาเพื่อให้ Workflow ผ่าน
