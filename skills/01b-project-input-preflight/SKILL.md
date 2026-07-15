@@ -1,15 +1,15 @@
 ---
 name: project-input-preflight
-description: ตรวจความพร้อมและความสอดคล้องของ Orthomosaic, AOI, จุดปลูก, จุดภาคสนาม และเส้นทางก่อนเริ่ม Workflow จริง โดยรักษาแหล่งที่มา CRS วันที่ และระดับความน่าเชื่อถือของแต่ละข้อมูล
+description: ตรวจความพร้อมและความสอดคล้องของ Orthomosaic, AOI, จุดปลูก จุดภาคสนาม และเส้นทางก่อนเริ่ม Workflow จริง โดยรักษา CRS วันที่ Provenance และระดับความน่าเชื่อถือ
 ---
 
 # Project Input Preflight
 
 ## หน้าที่
 
-สร้างสัญญา Input กลางของโครงการก่อนวิเคราะห์จริง เพื่อป้องกันการนำไฟล์คนละแปลง คนละวัน คนละ CRS หรือจุดที่อนุมานจากกริดไปปะปนกับจุดปลูกที่สำรวจจริง
+สร้าง Input Contract กลาง ป้องกันไฟล์คนละแปลง คนละวัน คนละ CRS หรือจุดอนุมานจากกริดปะปนกับจุดปลูกที่สำรวจจริง
 
-งานทดลองจาก JPG/PNG สามารถข้ามได้ แต่ผลต้องเป็น `image_demo_only` และห้ามรายงานพื้นที่หรือระยะจริง
+JPG/PNG ไม่มีพิกัดใช้ได้เฉพาะ `image_demo_only` และห้ามรายงานระยะ พื้นที่ หรืออัตรารอดจริง
 
 ## Required Inputs
 
@@ -38,9 +38,7 @@ acquisition_date
 planting_date
 ```
 
-## Input Source Classes
-
-ทุก Layer ต้องมี Source Class:
+## Source Classes
 
 ```text
 surveyed_field
@@ -51,7 +49,7 @@ model_inferred
 unknown
 ```
 
-จุดปลูกต้องแยกสถานะ:
+Planting Point Classes:
 
 ```text
 surveyed_planting_point
@@ -62,20 +60,7 @@ inferred_grid_position
 
 ห้ามเรียก `inferred_grid_position` ว่าจุดปลูกจริง
 
-## Validation Rules
-
-1. ตรวจ `project_id`, `plot_code`, วันที่ และชื่อไฟล์ว่าไม่ขัดกัน
-2. ตรวจ CRS ของทุก Spatial Layer และกำหนด Working CRS แบบ Projected สำหรับระยะ/พื้นที่
-3. ห้าม Reproject หรือแก้ Geometry โดยไม่บันทึก Source CRS, Target CRS และ Method
-4. ตรวจ Bounds ว่า Layer ซ้อนกับ Raster/AOI อย่างสมเหตุสมผล
-5. ตรวจ Duplicate Point, Geometry Invalid, NoData และ Missing Attribute
-6. ตรวจหน่วยระยะและพื้นที่ ห้ามใช้ Degree คำนวณเมตร
-7. ตรวจวันที่ภาพเทียบกับวันที่ปลูกและวันที่สำรวจ
-8. Planned Point, Surveyed Point และ Inferred Grid ต้องเก็บแยก Layer หรือแยก `point_source`
-9. Route จาก Orthomosaic ต้องเป็น Candidate ไม่ใช่ Verified Route
-10. ไฟล์ที่ไม่มีแหล่งที่มาหรือวันที่ให้ลด Reliability และสร้าง Warning
-
-## Reliability Classes
+## Reliability
 
 ```text
 R1_verified_field_or_approved
@@ -85,7 +70,36 @@ R4_model_inferred
 R5_unknown
 ```
 
-## Required Outputs
+## Validation Rules
+
+1. ตรวจ `project_id`, `plot_code`, วันที่ และชื่อไฟล์
+2. ตรวจ CRS และกำหนด Working CRS แบบ Projected สำหรับระยะ/พื้นที่
+3. บันทึก Source CRS, Target CRS และ Reprojection Method
+4. ตรวจ Bounds ซ้อนกับ Raster/AOI
+5. ตรวจ Duplicate, Geometry Invalid, NoData และ Missing Attribute
+6. ห้ามใช้ Degree คำนวณเมตร
+7. ตรวจวันที่ภาพเทียบวันที่ปลูก/สำรวจ
+8. Planned, Surveyed และ Inferred Point ต้องเก็บ Provenance แยก
+9. Route จาก Orthomosaic เป็น Candidate ไม่ใช่ Verified Route
+10. Input ไม่มีแหล่งที่มาหรือวันที่ต้องลด Reliability
+
+## Preflight Status
+
+```text
+ready
+ready_with_warnings
+blocked
+image_demo_only
+```
+
+- `ready`: Required Input ครบและไม่มี Warning สำคัญ
+- `ready_with_warnings`: รันต่อได้ แต่ต้องส่ง Warning ไปทุก Stage
+- `blocked`: ห้ามเริ่ม Analysis Production
+- `image_demo_only`: วิเคราะห์เชิงภาพได้ แต่ไม่มีผลพิกัดจริง
+
+Critical Warning ต้องทำให้เป็น `blocked` ไม่ใช่ `ready_with_warnings`
+
+## Outputs
 
 ```text
 project_manifest.json
@@ -95,7 +109,7 @@ normalized_input_references.json
 preflight_summary.md
 ```
 
-`project_manifest.json` ต้องระบุ:
+Manifest ต้องมี:
 
 ```text
 schema_version
@@ -117,24 +131,21 @@ preflight_status
 
 ## Stop Conditions
 
-หยุดและขอข้อมูลเพิ่มเมื่อ:
-
-- Raster ไม่มี CRS/Transform แต่ผู้ใช้ต้องการพิกัดจริง
-- AOI หรือจุดปลูกอยู่นอก Raster อย่างผิดปกติ
-- CRS ไม่ทราบและไม่สามารถกำหนดอย่างมีหลักฐาน
-- `plot_code` ของ Input ขัดกัน
-- วันที่ภาพเก่ากว่าวันปลูก แต่ถูกขอให้คำนวณอัตรารอดหลังปลูก
-- จุดปลูกไม่มี Source Class และจะถูกใช้เป็นตัวหารอัตรารอด
-- Output Directory เขียนไม่ได้หรือเสี่ยงทับผลเดิม
+- Raster ไม่มี CRS/Transform แต่ต้องการผลพิกัดจริง
+- AOI/จุดปลูกอยู่นอก Raster ผิดปกติ
+- CRS ไม่ทราบ
+- Plot Code ขัดกัน
+- วันที่ภาพเก่ากว่าวันปลูกแต่ขอ Survival หลังปลูก
+- จุดปลูกไม่มี Source Class แต่จะใช้เป็นตัวหาร
+- Output เสี่ยงทับผลเดิมหรือเขียนไม่ได้
 
 ## Downstream Contract
 
-ทุก Skill ถัดไปอ่าน `project_manifest.json` และ Input ที่เกี่ยวข้องเท่านั้น ไม่ต้องอ่านคำอธิบายโครงการซ้ำทั้งหมด
+Skill ถัดไปอ่าน `project_manifest.json` และ Input ที่เกี่ยวข้อง ไม่ต้องอ่านคำอธิบายโครงการซ้ำ
 
 ## Restrictions
 
 - ห้ามแก้ Source File
 - ห้ามรวม Planned Point กับ Inferred Grid โดยไม่เก็บ Provenance
-- ห้ามถือ AOI เป็นขอบเขตผลวิเคราะห์โดยอัตโนมัติ
-- ห้ามสร้างข้อมูลที่ขาดขึ้นมาเพื่อให้ Workflow รันต่อ
-- สถานะสูงสุดของ Preflight คือ `ready_with_warnings`; ผู้ใช้ต้องตัดสิน Warning สำคัญ
+- ห้ามถือ AOI เป็นขอบเขตผลอัตโนมัติ
+- ห้ามสร้างข้อมูลที่ขาดเพื่อให้ Workflow ผ่าน
