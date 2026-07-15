@@ -1,13 +1,13 @@
 ---
 name: planting-grid-inference
-description: อนุมานแนวแถว ระยะปลูก และ Planting Pattern Block เบื้องต้นจากต้นเดี่ยวที่เชื่อถือได้หรือจุดปลูกเดิม เพื่อส่งให้ Skill 12b ตรวจจำนวนและขอ Refit เมื่อจำเป็น
+description: อนุมานแนวแถว ระยะปลูก และ Planting Pattern Block เบื้องต้นจากต้นเดี่ยวที่เชื่อถือได้หรือจุดปลูกเดิม เพื่อส่งให้ Skill 12c แยกเรือนยอดชิดและ Skill 12b ตรวจจำนวนสุดท้าย
 ---
 
 # Planting Grid Inference
 
 ## Scope
 
-สร้าง Preliminary Spacing/Pattern จากผล Skill 11 หรือจุดปลูกเดิม ห้ามนับต้นสุดท้าย สร้างต้นจากกริด หรือวงขอบเขต
+สร้าง Preliminary Spacing/Pattern จากผล Skill 11 หรือจุดปลูกเดิม ห้ามนับต้นสุดท้าย สร้างต้นจาก Grid หรือวงขอบเขต
 
 ## Inputs
 
@@ -75,6 +75,7 @@ unreliable_pattern_zone
 8. Grid เป็นตำแหน่งคาดหมาย ไม่ใช่หลักฐานว่าต้นรอด
 9. Refit ได้สูงสุดตาม `processing.max_grid_refit_iterations`
 10. ทุก Refit ต้องเพิ่ม `grid_model_version` และเก็บ Parent Version
+11. Skill 12c ใช้ Local Spacing ของ `grid_block_id` เท่านั้น ห้ามใช้ค่าเดียวทั้งแปลง
 
 ## Required Metrics
 
@@ -133,6 +134,7 @@ grid_missing_preview.png
 
 ## Downstream
 
-ส่งผลให้ Skill 12b ตรวจร่วมกับ Canopy, Planned Points, Surface และต้นใหญ่
-
-หาก Skill 12b ส่ง `grid_refit_required=true` ให้ Refit ด้วย Validated Reference แล้วส่งกลับ 12b ห้ามส่งต่อ Skill 13 ก่อน Validation ผ่าน
+- ส่ง Pattern และ Local Spacing ให้ Skill 12c แยก Crown Center ในเรือนยอดชิด
+- ส่ง Pattern เดียวกันให้ Skill 12b ตรวจ Final Class ร่วมกับ Canopy, Planned Points และ Context
+- หาก Skill 12b ส่ง `grid_refit_required=true` ให้ Refit ด้วย Validated Reference แล้วรัน 12c เฉพาะ Block ที่ได้รับผลกระทบก่อนส่งกลับ 12b
+- ห้ามส่งต่อ Skill 13 ก่อน Validation ผ่าน
