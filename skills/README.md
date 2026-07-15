@@ -9,6 +9,9 @@
 | `01-large-orthomosaic-reader` | อ่าน GeoTIFF/COG/VRT ขนาดใหญ่ สร้าง Overview, Tile Index และ Manifest |
 | `16-surface-hydrology-condition-classifier` | จำแนกสภาพผิว ดิน เลน น้ำขัง แอ่งน้ำ และร่องน้ำที่มองเห็น |
 | `17-palm-coconut-detector` | แยกปาล์ม/มะพร้าว Candidate ออกจากต้นจากและโกงกาง |
+| `18-field-inspection-priority-analyzer` | เลือกจุดและโซนที่ควรเข้าตรวจจากความไม่แน่นอน ความเสียหาย ผลกระทบ และ QA |
+| `19-multimodal-access-route-planner` | ประเมินเส้นทางเข้าจุดตรวจทางบก ทางเรือ และการเดินช่วงสุดท้าย |
+| `20-field-inspection-mission-planner` | รวมจุดตรวจและ Route เป็นภารกิจ วัน ทีม และ Field Checklist |
 
 ## ปลูกเสริม
 
@@ -35,6 +38,28 @@
 | `14-full-area-boundary-delineator` | สร้าง Core, Evidence Boundary และ Uncertain Edge |
 | `15-full-area-qa-human-review` | QA และชุด Human Review สำหรับปลูกเต็ม |
 
+# Field Inspection Planning
+
+ใช้หลังมีผลวิเคราะห์แล้ว:
+
+```text
+Analysis/QA Outputs
+→ Skill 18: จุดไหนต้องตรวจและเพราะอะไร
+→ Skill 19: เข้าทางบกหรือทางเรือ ใช้เวลาและระยะเท่าไร
+→ Skill 20: จัดกลุ่มเป็น Mission, วัน, ทีม และ Checklist
+```
+
+## หลักการสำคัญ
+
+- `evidence_priority_score` = จุดนี้จำเป็นต้องตรวจมากเพียงใด
+- `access_burden_score` = จุดนี้เข้าถึงยากเพียงใด
+- ห้ามรวมสองคะแนนจนจุดสำคัญแต่ไกลหายออกจากแผน
+- จุดสำคัญและไกลให้เป็น `special_mission` หรือ `remote_cluster_mission`
+- จุดไกลหลายจุดควรรวมเป็นเที่ยวเดียวเมื่อคุ้มค่า
+- ระยะเข้าถึงต้องใช้ Network Distance ไม่ใช่เส้นตรง
+- Route ทางบกและทางเรือต้องประเมินแยก
+- Route จากภาพเป็น Candidate ต้องให้ทีมพื้นที่ยืนยัน
+
 # Token-efficient load sets
 
 | งาน | อ่านเต็ม | อ่านเฉพาะ Output Contract |
@@ -55,6 +80,9 @@
 | วิเคราะห์ Gap ปลูกเสริม | 07 | 02–06 และ 16/17 เมื่อมี |
 | วงขอบเขตปลูกเสริม | 08 | 07 |
 | QA ปลูกเสริม | 09 | 02–08 และ Optional Outputs |
+| เลือกจุดเข้าตรวจ | 18 | Analysis, Boundary และ QA Outputs |
+| วิเคราะห์ทางบก/ทางเรือ | 19 | 18 และ Route Layers |
+| จัด Mission ภาคสนาม | 20 | 18–19 |
 
 ## Trigger ของ Optional Skill
 
@@ -77,6 +105,30 @@
 - อาจเห็นลำต้นหรือเงาลำต้น
 
 ต้นจากที่เป็นกอ/ผืนและศูนย์กลางไม่ชัดให้ใช้ Skill 05
+
+### Skill 18
+
+เรียกเมื่อผู้ใช้ต้องการตอบว่า:
+
+- จุดไหนควรเข้าตรวจ
+- จุดไหนเป็นต้นหาย/อัตรารอดต่ำ/ขอบเขตไม่มั่นใจ
+- จุดไหนต้องเก็บ Ground Truth หรือ QA Control
+
+### Skill 19
+
+เรียกเมื่อมี Candidate Inspection Points และต้องพิจารณา:
+
+- ถนน ทางเดิน คันดิน หรือเส้นทางบก
+- คลอง เส้นทางเรือ ท่าเรือ หรือจุดขึ้นฝั่ง
+- เวลา ระยะทาง Tide, Permission และ Safety
+
+### Skill 20
+
+เรียกเมื่อมีผล Priority และ Access แล้ว และต้องการ:
+
+- เลือกจุดจริงตามกำลังทีม
+- รวมจุดไกลเป็น Mission
+- วางแผนรายวันและ Field Checklist
 
 ## วิธีอ่าน Output Contract
 
@@ -105,7 +157,10 @@ warnings
 
 - งานครบปลูกเสริม: Skill 00
 - งานครบปลูกเต็ม: Skill 10
-- Skill 16 และ 17 เป็น Optional Shared Skill เรียกเฉพาะเมื่อมี Trigger
+- วางจุดตรวจอย่างเดียว: Skill 18
+- วาง Route อย่างเดียว: Skill 19
+- จัด Mission: Skill 20
+- Skill 16–20 เป็น Optional Shared Skill เรียกเฉพาะเมื่อมี Trigger
 - ห้ามอ่าน Skill ปลูกเต็มเมื่องานเป็นปลูกเสริม หรือกลับกัน โดยไม่มีเหตุผล
 - ภาพ Crop ใช้สอนการตีความ ไม่ใช่พิกัดจริง
 - งานจริงต้องรักษา CRS และ Affine Transform
