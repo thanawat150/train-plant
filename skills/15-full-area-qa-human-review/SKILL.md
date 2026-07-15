@@ -1,17 +1,18 @@
 ---
 name: full-area-qa-human-review
-description: ตรวจผลแปลงปลูกเต็มพื้นที่ตั้งแต่ Raw Detection, Spacing Validation, อัตรารอด และ Boundary พร้อมสร้าง Warning Layers และชุดตรวจทานสำหรับมนุษย์
+description: ตรวจผลแปลงปลูกเต็มตั้งแต่ Raw Detection, Skill 12b Validation, Survival และ Boundary พร้อมสร้าง Warning Layers และ Human Review Package
 ---
 
 # Full-area QA and Human Review
 
 ## Scope
 
-ตรวจผลจาก Skill 11, 12, 21, 13 และ 14 ห้ามตรวจต้นใหม่ Fit Grid ใหม่ หรือเปลี่ยนผลให้ผ่านเองโดยไม่สร้าง Rework Request
+ตรวจผลจาก Skill 11, 12, 12b, 13 และ 14 ห้ามตรวจต้นใหม่ Fit Grid ใหม่ หรือแก้ผลให้ผ่านเองโดยไม่สร้าง Rework Request
 
-## Required inputs
+## Required Inputs
 
 ```text
+project_manifest.json
 planted_tree_candidates.gpkg
 validated_planted_tree_points.gpkg
 planting_point_status.gpkg
@@ -20,14 +21,16 @@ existing_large_trees_validated.gpkg
 merged_canopy_clusters.gpkg
 planting_pattern_blocks.gpkg
 spacing_model.json
+tree_count_validation_metrics.json
 survival_mortality_zones.gpkg
 full_area_planting_evidence_boundary.gpkg
 ```
 
-## Required checks
+## Required Checks
 
 ```text
 raw_detection_used_as_final_warning
+preflight_warning
 false_positive_on_bare_ground_warning
 false_positive_on_water_warning
 false_positive_on_road_warning
@@ -40,6 +43,7 @@ grid_only_surviving_warning
 random_scatter_detection_warning
 weak_pattern_warning
 multi_pattern_forced_warning
+grid_refit_unresolved_warning
 grid_crosses_barrier_warning
 missing_vs_unobservable_warning
 boundary_expanded_by_false_positive_warning
@@ -51,7 +55,7 @@ geometry_invalid_warning
 low_segment_confidence_warning
 ```
 
-## Required metrics
+## Required Metrics
 
 ```text
 raw_detection_count
@@ -79,46 +83,47 @@ survival_rate_estimated_min
 survival_rate_estimated_max
 pattern_block_count
 spacing_consistency
+grid_refit_iterations
 unsupported_area_ratio
 off_grid_tree_count
 uncertain_boundary_ratio
 geometry_valid
 ```
 
-## Mandatory comparison
+## Mandatory Comparison
 
-แสดงอย่างน้อย:
+แสดง:
 
 ```text
 Raw Detection Count
-เทียบกับ
-Validated Confirmed Count
-เทียบกับ
-Estimated Count Range
+vs Validated Confirmed Count
+vs Validated + Spacing-supported Count
+vs Estimated Count Range
 ```
 
-หากตัวเลขต่างกันมาก ต้องอธิบายว่าเกิดจาก False Positive, Existing Large Tree, Merged Canopy, Duplicate หรือ Not Observable เท่าไร
+อธิบายส่วนต่างจาก False Positive, Existing Large Tree, Duplicate, Merged Canopy และ Not Observable
 
-## Review package
+## Review Package
 
 ```text
-01_raw_tree_detection_preview.png
-02_reference_spacing_pattern_preview.png
-03_false_positive_large_tree_preview.png
-04_merged_canopy_validation_preview.png
-05_final_tree_count_status_preview.png
-06_survival_mortality_preview.png
-07_boundary_confidence_preview.png
-08_warning_preview.png
+01_preflight_summary.png หรือ md
+02_raw_tree_detection_preview.png
+03_reference_spacing_pattern_preview.png
+04_false_positive_large_tree_preview.png
+05_merged_canopy_validation_preview.png
+06_final_tree_count_status_preview.png
+07_survival_mortality_preview.png
+08_boundary_confidence_preview.png
+09_warning_preview.png
 qa_report.json
 warning_layers.gpkg
 review_checklist.csv
 analysis_manifest.json
 ```
 
-## Review decisions
+## Review Status
 
-AI ใช้สถานะได้เพียง:
+AI:
 
 ```text
 draft
@@ -126,7 +131,7 @@ needs_human_review
 rework
 ```
 
-AI ห้ามตั้ง:
+Human only:
 
 ```text
 reviewed
@@ -134,17 +139,18 @@ rejected
 approved
 ```
 
-## Acceptance before human decision
+## Acceptance Before Human Decision
 
+- Preflight ผ่านหรือ Warning ได้รับการรับทราบ
 - Source Raster, CRS, Config และ Skill Version ถูกบันทึก
-- ทุกผลย้อนกลับไปยัง Tile/Window ได้
+- ทุกผลย้อนกลับ Tile/Window ได้
 - Raw Detection ไม่ถูกใช้เป็นจำนวนสุดท้าย
 - จุดบนดิน น้ำ ถนน และเงาถูกตรวจ
-- ต้นใหญ่เดิมไม่อยู่ในจำนวนต้นปลูกและไม่ใช้ Fit Grid
-- Merged Canopy แสดง Confirmed, Probable หรือ Min–Max อย่างโปร่งใส
-- Grid-only Position ไม่ถูกนับเป็น Surviving
+- ต้นใหญ่เดิมไม่อยู่ในจำนวนและไม่ใช้ Fit Grid
+- Merged Canopy แยก Confirmed, Probable หรือ Min–Max
+- Grid-only Position ไม่เป็น Surviving
+- Grid Refit จบอย่างมีสถานะชัดเจน
 - สูตรอัตรารอดและตัวหารถูกแสดง
-- Missing Tree แยกจาก Not Observable
+- Missing แยกจาก Not Observable
 - Boundary ใช้ผล Validated และมี Segment Confidence
 - Warning ทุกข้อมีตำแหน่งและเหตุผล
-- ไม่มีการแก้ผลอัตโนมัติเพียงเพื่อให้ผ่าน QA
