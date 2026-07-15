@@ -1,81 +1,26 @@
 # train-plant
 
-ชุด Skill สำหรับวิเคราะห์ภาพโดรนและ Orthomosaic ของงานปลูกป่าชายเลน แยกเป็น 2 Workflow:
+ชุด Skill สำหรับวิเคราะห์ภาพโดรนและ Orthomosaic ของงานปลูกป่าชายเลน ตั้งแต่ตรวจต้น หาแถว/กริด วิเคราะห์อัตรารอด วงขอบเขต ไปจนถึงเลือกจุดเข้าตรวจและวางแผนเส้นทางทางบก–ทางเรือ
+
+Workflow หลักมี 2 แบบ:
 
 1. **ปลูกเสริม** — ปลูกแทรกในช่องว่างของป่าเดิม
 2. **ปลูกเต็มพื้นที่** — ปลูกครอบคลุมพื้นที่กว้างและมีแถวหรือกริดต่อเนื่อง
 
-มี Shared Skill เพิ่มสำหรับอ่าน Raster ขนาดใหญ่ จำแนกสภาพดิน–เลน–น้ำที่มองเห็น และแยกปาล์ม/มะพร้าวออกจากต้นจาก
-
-> ผลทั้งหมดเป็น Candidate Evidence จากภาพ ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก และสีภาพไม่สามารถยืนยันคุณสมบัติดินทางห้องปฏิบัติการ
+> ผลทั้งหมดเป็น Candidate Evidence, Candidate Route และ Candidate Mission ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย ไม่ใช่ผลตรวจดินทางห้องปฏิบัติการ และไม่ใช่การรับรองความปลอดภัยของเส้นทาง
 
 # เลือก Workflow ก่อน
 
-| ลักษณะภาพ | Workflow | Skill เริ่มต้น |
-|---|---|---|
-| ป่าเดิมหนาแน่น มีโกงกางปลูกแทรก วัชพืช ต้นจาก และช่องว่างเป็นหย่อม | ปลูกเสริม | `skills/00-enrichment-analysis-orchestrator/SKILL.md` |
-| ต้นปลูกกระจายทั่วพื้นที่ เห็นแนวแถว กริด หรือระยะปลูกซ้ำ | ปลูกเต็มพื้นที่ | `skills/10-full-area-planting-orchestrator/SKILL.md` |
-| อ่านภาพใหญ่และแบ่ง Tile เท่านั้น | Shared | `skills/01-large-orthomosaic-reader/SKILL.md` |
-| จำแนกดิน เลน น้ำขัง แอ่งน้ำ และร่องน้ำที่มองเห็น | Shared | `skills/16-surface-hydrology-condition-classifier/SKILL.md` |
-| แยกต้นเดี่ยวทรงดาวที่อาจเป็นปาล์ม/มะพร้าว | Shared | `skills/17-palm-coconut-detector/SKILL.md` |
-
-ห้ามใช้ Workflow ปลูกเสริมกับแปลงปลูกเต็ม และห้ามใช้ Grid ของปลูกเต็มไปบังคับพื้นที่ปลูกเสริม
-
-# ความเข้าใจจากภาพตัวอย่าง
-
-## ต้นจาก
-
-- ขึ้นเป็นกอหรือผืนหนาแน่นต่อเนื่อง
-- ใบยาวหลายกอซ้อนกัน ศูนย์กลางไม่ชัด
-- ไม่เห็นลำต้นตั้งเด่น
-- มักสัมพันธ์กับเลน คลอง และพื้นที่ชุ่มน้ำ
-- ใช้ Skill 05
-
-## ปาล์ม/มะพร้าว Candidate
-
-- มักเป็นต้นเดี่ยว
-- มีศูนย์กลางเรือนยอดชัด
-- ใบแผ่จากยอดเดียวเป็นดาวหรือรัศมี
-- อาจเห็นลำต้นหรือเงาลำต้น
-- ใช้ Skill 17 และห้ามเรียกเป็นต้นจากโดยอัตโนมัติ
-
-## ผิวดิน–เลน–น้ำ
-
-Class จากภาพเป็นเพียงสภาพผิวที่มองเห็น เช่น `dry_pale_mud`, `wet_mud`, `waterlogged_depression`, `disturbed_fill_soil` และ `possible_salt_crust`
-
-`possible_salt_crust` ไม่ใช่ผลยืนยันดินเค็ม ต้องตรวจ EC, pH, ระดับพื้นที่ และข้อมูลภาคสนาม
-
-# กฎประหยัด Token
-
-Codex ต้องอ่านเฉพาะ:
-
-1. `AGENTS.md`
-2. `skills/README.md`
-3. Skill ที่ผู้ใช้เรียก
-4. Skill ก่อนหน้าที่เป็น Input โดยอ่านเฉพาะ Output Contract เมื่อจำเป็น
-
-ห้ามอ่าน Skill ทั้ง Repository พร้อมกัน
-
-ตัวอย่าง:
-
-- นับต้นปลูกเต็ม: อ่าน Skill 01 และ 11
-- หา Grid: อ่าน Skill 12 และอ่าน Output Contract ของ 11
-- วงขอบเขตปลูกเต็ม: อ่าน Skill 14 และ Output Contract ของ 11–13
-- แยกต้นจาก: อ่าน Skill 05 และ Context ที่จำเป็น
-- แยกปาล์ม/มะพร้าว: อ่าน Skill 17 เท่านั้น พร้อม Input Class/Tile
-- วิเคราะห์พื้นผิวและน้ำ: อ่าน Skill 16 เท่านั้น พร้อม Skill 01 เมื่อยังไม่มี Tile
-- งานเต็มระบบ: ใช้ Orchestrator 00 หรือ 10 ให้เรียกทีละ Skill
-
-หลังจบแต่ละขั้น ส่งต่อเพียง:
-
-```text
-source_file_paths
-schema/version
-crs
-config_used
-summary_metrics
-warnings
-```
+| งาน | Skill เริ่มต้น |
+|---|---|
+| วิเคราะห์ปลูกเสริมครบระบบ | `skills/00-enrichment-analysis-orchestrator/SKILL.md` |
+| วิเคราะห์ปลูกเต็มครบระบบ | `skills/10-full-area-planting-orchestrator/SKILL.md` |
+| อ่าน Orthomosaic และแบ่ง Tile | `skills/01-large-orthomosaic-reader/SKILL.md` |
+| จำแนกดิน–เลน–น้ำที่มองเห็น | `skills/16-surface-hydrology-condition-classifier/SKILL.md` |
+| แยกปาล์ม/มะพร้าวออกจากต้นจาก | `skills/17-palm-coconut-detector/SKILL.md` |
+| เลือกจุดที่ควรเข้าตรวจ | `skills/18-field-inspection-priority-analyzer/SKILL.md` |
+| วางเส้นทางทางบก/ทางเรือ | `skills/19-multimodal-access-route-planner/SKILL.md` |
+| จัดกลุ่มภารกิจ วัน และทีม | `skills/20-field-inspection-mission-planner/SKILL.md` |
 
 # โครงสร้าง Skill
 
@@ -98,156 +43,237 @@ skills/
 ├─ 14-full-area-boundary-delineator/
 ├─ 15-full-area-qa-human-review/
 ├─ 16-surface-hydrology-condition-classifier/
-└─ 17-palm-coconut-detector/
+├─ 17-palm-coconut-detector/
+├─ 18-field-inspection-priority-analyzer/
+├─ 19-multimodal-access-route-planner/
+└─ 20-field-inspection-mission-planner/
 ```
 
-# คำสั่งปลูกเต็มพื้นที่
+# กฎประหยัด Token
 
-## รันครบทั้งระบบ
+Codex ต้องอ่านเฉพาะ:
+
+1. `AGENTS.md`
+2. `skills/README.md`
+3. Skill ที่กำลังใช้
+4. Skill ก่อนหน้าเฉพาะ Output Contract เมื่อจำเป็น
+
+ห้ามอ่าน Skill ทั้ง Repository พร้อมกัน
+
+เมื่อส่งงานต่อขั้นถัดไป ให้ส่งเพียง:
+
+```text
+source_file_paths
+schema/version
+crs
+config_used
+summary_metrics
+warnings
+```
+
+ตัวอย่าง Load Set:
+
+| งาน | อ่านเต็ม |
+|---|---|
+| นับต้นปลูกเต็ม | 01, 11 |
+| หา Grid | 12 และ Output Contract ของ 11 |
+| วิเคราะห์อัตรารอด | 13 และ Output Contract ของ 11–12 |
+| วงขอบเขตปลูกเต็ม | 14 และ Output Contract ของ 11–13 |
+| เลือกจุดเข้าตรวจ | 18 และ Analysis/QA Outputs |
+| วิเคราะห์เส้นทาง | 19 และ Output ของ 18 |
+| จัด Mission | 20 และ Output ของ 18–19 |
+
+# Workflow ปลูกเต็มพื้นที่
+
+```text
+Orthomosaic
+→ Skill 01 อ่านภาพและแบ่ง Tile
+→ Skill 11 ตรวจต้นปลูก
+→ Skill 12 หาแถว กริด และตำแหน่งต้นหาย
+→ Skill 13 วิเคราะห์อัตรารอด/ตาย
+→ Skill 14 วงขอบเขตปลูกเต็ม
+→ Skill 15 ตรวจ QA
+```
+
+Optional:
+
+```text
+Skill 16 วิเคราะห์ Surface/Hydrology
+Skill 17 แยก Palm/Coconut
+Skill 18 → 19 → 20 วางแผนเข้าตรวจภาคสนาม
+```
+
+## Prompt ปลูกเต็มครบระบบ
 
 ```text
 อ่าน AGENTS.md และ skills/README.md
 ใช้ skills/10-full-area-planting-orchestrator/SKILL.md
 
+Plot code: 17-STC
 Input Orthomosaic:
-D:\Drone\Full_Area\Input\plot_001_orthomosaic.tif
+<ORTHOMOSAIC_PATH>
 
 Output:
-D:\Drone\Full_Area\Outputs\plot_001
+<OUTPUT_PATH>\17-STC
 
 ทำตามลำดับ Skill 01, 11, 12, 13, 14 และ 15
 โหลด Skill ทีละตัว
 
-เรียก Skill 16 เฉพาะเมื่อมีพื้นดิน เลน น้ำขัง หรือ Surface Zone ต่างกันชัด
-เรียก Skill 17 เฉพาะเมื่อพบต้นเดี่ยวทรงรัศมีที่อาจเป็นปาล์ม/มะพร้าว
+วัตถุประสงค์:
+- นับต้นปลูก
+- หาแถวและกริด
+- หาตำแหน่งต้นหาย
+- วิเคราะห์อัตรารอด/ตาย
+- สร้าง Candidate Boundary
+- สร้าง QA Package
 
-หยุดให้ตรวจหลัง Tree Detection, Grid Inference,
-Survival/Mortality, Optional Context และ Candidate Boundary
-ห้ามตั้งสถานะ approved
-```
-
-## ตรวจและนับต้นเท่านั้น
-
-```text
-อ่านเฉพาะ AGENTS.md, skills/README.md,
-skills/01-large-orthomosaic-reader/SKILL.md และ
-skills/11-full-area-tree-detector/SKILL.md
-
-ตรวจต้นปลูกเป็นรายพุ่ม แยกเงาและต้นเดิมขนาดใหญ่
-ป้องกันการนับซ้ำระหว่าง Tile
-ห้ามสร้าง Grid หรือ Boundary
-
-Input: <ORTHOMOSAIC_PATH>
-Output: <OUTPUT_PATH>
-```
-
-## หาแถว กริด และตำแหน่งต้นหาย
-
-```text
-อ่านเฉพาะ skills/12-planting-grid-inference/SKILL.md
-ใช้ planted_tree_candidates.gpkg ที่มีอยู่แล้ว
-
-สร้าง Planting Rows, Grid Blocks, ระยะต้น ระยะแถว
-และ expected_missing_positions
-ห้ามตรวจต้นใหม่และห้ามสร้าง Boundary
-
-Input: <TREE_DETECTION_OUTPUT>
-Output: <OUTPUT_PATH>
-```
-
-## วิเคราะห์อัตรารอด
-
-```text
-อ่านเฉพาะ skills/13-full-area-mortality-analyzer/SKILL.md
-ใช้ผล Tree Detection และ Grid ที่มีอยู่แล้ว
-
-แยก surviving, probable_missing, uncertain และ not_observable
-แสดงสูตร ตัวหาร และอัตรารอดแยกตาม Grid Block
-ห้ามถือ not_observable เป็นต้นตาย
-
-Input: <TREE_AND_GRID_OUTPUTS>
-Output: <OUTPUT_PATH>
-```
-
-## วงขอบเขตปลูกเต็ม
-
-```text
-อ่านเฉพาะ skills/14-full-area-boundary-delineator/SKILL.md
-ใช้ผลต้น กริด และ Survival/Mortality ที่มีอยู่แล้ว
-
-สร้าง full_area_planting_core,
-full_area_planting_evidence_boundary และ
-full_area_uncertain_edge
-
-รวม Mortality Gap เมื่อ Grid ยังต่อเนื่อง
-ห้ามใช้ Convex Hull เป็นค่าเริ่มต้น
-ห้ามตั้งสถานะ approved
-```
-
-# คำสั่งปลูกเสริม
-
-```text
-อ่าน AGENTS.md และ skills/README.md
-ใช้ skills/00-enrichment-analysis-orchestrator/SKILL.md
-
-Input Orthomosaic:
-D:\Drone\Enrichment\Input\plot_001_orthomosaic.tif
-
-Output:
-D:\Drone\Enrichment\Outputs\plot_001
-
-แยกโกงกาง Candidate, วัชพืช, ต้นจาก, ปาล์ม/มะพร้าว,
-ป่าเดิม เรือนยอดปิด น้ำ เลน เงา และช่องว่างปลูกเสริม
-วิเคราะห์แบบ Gap-by-gap
-
-เรียก Skill 16 เมื่อภาพมี Surface/Hydrology ต่างกันชัด
+เรียก Skill 16 เมื่อ Surface/Hydrology ต่างกันชัด
 เรียก Skill 17 เมื่อพบต้นเดี่ยวทรงรัศมี
 หยุดให้ตรวจทุก Checkpoint
 ห้ามตั้งสถานะ approved
 ```
 
-# คำสั่งจำแนกดิน–เลน–น้ำที่มองเห็น
+# Workflow ปลูกเสริม
 
 ```text
-อ่าน AGENTS.md, skills/README.md และ
-skills/16-surface-hydrology-condition-classifier/SKILL.md
-
-Input: <ORTHOMOSAIC_OR_TILE_MANIFEST>
-Output: <OUTPUT_PATH>
-
-แยก shallow water, waterlogged depression, tidal microchannel,
-wet mud, dry pale mud, dry oxidized soil, disturbed fill soil,
-transitional mud และ possible salt crust
-
-ห้ามยืนยันความเค็ม pH หรือชนิดดินจากภาพ
-สร้าง Surface Preview, Confidence และจุดที่ควรตรวจภาคสนาม
+Orthomosaic
+→ Skill 01 อ่านภาพและแบ่ง Tile
+→ Skill 02 จำแนกสิ่งปกคลุม
+→ Skill 03 ตรวจโกงกาง Candidate
+→ Skill 04 แยกวัชพืช
+→ Skill 05 ตรวจต้นจาก
+→ Skill 06 ป่าเดิม/เรือนยอดปิด
+→ Skill 07 วิเคราะห์ Gap
+→ Skill 08 วง Candidate Boundary
+→ Skill 09 ตรวจ QA
 ```
 
-# คำสั่งแยกต้นจากกับปาล์ม/มะพร้าว
+Optional:
 
 ```text
-อ่านเฉพาะ skills/05-nypa-palm-detector/SKILL.md และ
-skills/17-palm-coconut-detector/SKILL.md
-
-แยก:
-- Nypa: เป็นกอ/ผืน ใบซ้อน ศูนย์กลางไม่ชัด ไม่มีลำต้นเด่น
-- Palm/Coconut Candidate: ต้นเดี่ยว ศูนย์กลางชัด ทรงดาว อาจเห็นลำต้นหรือเงา
-
-Input: <ORTHOMOSAIC_OR_TILE_MANIFEST>
-Output: <OUTPUT_PATH>
-ห้ามยืนยันชนิดพฤกษศาสตร์เมื่อหลักฐานไม่พอ
+Skill 16 Surface/Hydrology
+Skill 17 Palm/Coconut
+Skill 18 → 19 → 20 Field Inspection Plan
 ```
 
-# Input ที่แนะนำ
+# แนวคิดการวางแผนเข้าตรวจ
 
-- GeoTIFF, COG หรือ VRT ที่มี CRS และ Affine Transform
-- Optional AOI, PDD หรือขอบเขตแผนงาน
-- จุดปลูกหรือข้อมูลภาคสนาม
-- ภาพก่อน–หลังปลูก
-- DSM/DTM/CHM หากมี
-- จุดตรวจ pH, EC, ความเค็ม เนื้อดิน และระดับพื้นที่เมื่อวิเคราะห์ Surface
+ระบบต้องแยก 2 คะแนน:
 
-อย่านำ Orthomosaic หลาย GB เข้า Git โดยตรง ให้เก็บไว้ในเครื่องหรือ Object Storage
+```text
+evidence_priority_score = จำเป็นต้องตรวจมากเพียงใด
+access_burden_score     = เข้าถึงยากเพียงใด
+```
+
+ห้ามลดความสำคัญของจุดเพียงเพราะไกล
+
+| ความจำเป็น | การเข้าถึง | การจัดการ |
+|---|---|---|
+| สูง | ง่าย/ปานกลาง | `inspect_now` |
+| สูง | ยาก/ไม่ทราบ | `special_mission` หรือ `route_scout_first` |
+| ปานกลาง | ง่าย | `bundle_opportunistically` |
+| ปานกลาง | ยาก | `remote_cluster_mission` เมื่อรวมหลายจุดคุ้มค่า |
+| ต่ำ | ง่าย | QA Control หรือแวะตรวจร่วม |
+| ต่ำ | ยาก | เลื่อนหรือ Remote Monitor เว้นแต่ขาดตัวแทนพื้นที่ |
+
+## จุดที่ควรเข้าตรวจ
+
+ตัวอย่าง Trigger:
+
+- กลุ่มต้นหายต่อเนื่อง
+- อัตรารอดต่ำ
+- `probable_missing`, `uncertain`, `not_observable` จำนวนมาก
+- Grid กับต้นที่ตรวจพบไม่ตรงกัน
+- ขอบเขต Confidence ต่ำ
+- โกงกางสับสนกับวัชพืช ต้นจาก หรือปาล์ม/มะพร้าว
+- น้ำขัง ร่องน้ำ หรือ Surface Zone สัมพันธ์กับการรอดต่ำ
+- ผลต่างจากภาพครั้งก่อนผิดปกติ
+- พื้นที่ห่างไกลที่ยังไม่มีตัวแทนตรวจ
+- High-confidence QA Control สำหรับตรวจความแม่นของระบบ
+
+# ข้อมูลเส้นทางที่ควรเตรียม
+
+```text
+road_access_lines
+trail_access_lines
+dike_or_embankment_lines
+boat_route_lines
+canal_or_tidal_channel_lines
+parking_points
+pier_points
+boat_landing_points
+plot_entry_points
+mode_transfer_points
+restricted_or_no_go_areas
+hazard_zones
+```
+
+เส้นทางจากภาพต้องระบุ Source และใช้เป็น Candidate จนกว่าทีมพื้นที่จะยืนยัน
+
+# Prompt เลือกจุดตรวจและวาง Route
+
+```text
+อ่าน AGENTS.md และ skills/README.md
+
+ใช้ตามลำดับ:
+1. skills/18-field-inspection-priority-analyzer/SKILL.md
+2. skills/19-multimodal-access-route-planner/SKILL.md
+3. skills/20-field-inspection-mission-planner/SKILL.md
+
+Plot code: 17-STC
+Analysis Output:
+<ANALYSIS_OUTPUT_PATH>
+
+Access Layers:
+<LAND_ROUTE_PATH>
+<BOAT_ROUTE_PATH>
+<ACCESS_POINT_PATH>
+<BARRIER_PATH>
+
+Output:
+<FIELD_PLAN_OUTPUT_PATH>
+
+เงื่อนไข:
+- เลือกจุดจากผลวิเคราะห์จริง ไม่สุ่มจากพื้นที่อย่างเดียว
+- แสดงเหตุผลของทุกจุด
+- แยก Evidence Priority กับ Access Burden
+- วิเคราะห์ทางบกและทางเรือเป็นทางเลือก
+- ใช้ Network Distance และเวลาไป–กลับ
+- คำนึงถึงการเดินช่วงสุดท้าย จุดขึ้นฝั่ง Tide, Permission และ Safety
+- จุดสำคัญแต่ไกลห้ามตัดทิ้ง ให้สร้าง Special Mission หรือรวมหลายจุด
+- มีทั้งจุดปัญหา จุดตัวแทน และ High-confidence QA Control
+- หยุดให้ตรวจหลัง Candidate Points, Route Options และ Mission Grouping
+- ห้ามตั้งสถานะ approved
+```
+
+# ผลลัพธ์ Field Planning
+
+```text
+inspection_priority_zones.gpkg
+inspection_candidate_points.gpkg
+inspection_priority_summary.csv
+inspection_route_options.gpkg
+inspection_access_assessment.csv
+selected_inspection_points.gpkg
+field_missions.gpkg
+mission_routes.gpkg
+mission_day_plan.csv
+inspection_backlog.csv
+field_checklist.csv
+field_mission_preview.png
+route_cards/
+```
+
+# ข้อควรระวัง
+
+- ระยะเส้นตรงไม่ใช่ระยะเข้าถึงจริง
+- คลองทุกเส้นไม่ได้แปลว่าเรือผ่านได้
+- คันดินทุกเส้นไม่ได้แปลว่าเดินหรือขับรถได้
+- จุดสำคัญและไกลต้องเพิ่มการวางแผน ไม่ใช่ถูกตัดออก
+- Route Candidate ต้องให้ทีมพื้นที่ยืนยัน
+- ต้องคิดเวลาไป–กลับ Buffer น้ำขึ้นน้ำลง การเปลี่ยนพาหนะ และความปลอดภัย
+- ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
+- สีภาพไม่ยืนยันความเค็ม pH หรือชนิดดิน
 
 # สถานะผลลัพธ์
 
@@ -269,4 +295,4 @@ approved
 
 # หมายเหตุ
 
-Repository นี้เป็นชุด Skill และข้อกำหนดสำหรับให้ Codex พัฒนาและควบคุม Workflow หากยังไม่มี Python Pipeline ที่ทำงานครบ ต้องสร้างและทดสอบ Code ก่อนรัน Orthomosaic จริง
+Repository นี้เป็นชุด Skill และข้อกำหนดสำหรับให้ Codex พัฒนาและควบคุม Workflow หากยังไม่มี Python Pipeline ที่ทำงานครบ ต้องสร้างและทดสอบ Code ก่อนรัน Orthomosaic และวาง Route จริง
