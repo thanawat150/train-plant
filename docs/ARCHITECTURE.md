@@ -30,18 +30,28 @@ Repository นี้แบ่งงานตาม Stage ไม่ใช้ห�
 
 ```text
 10 Orchestrator
-01 → 01b → 11 → 12 → 12b → 13 → 14 → 15
-                       ↖ Refit 12 ได้สูงสุด 2 รอบ
+01 → 01b → 11 → 12 → 12c → 12b → 13 → 14 → 15
+                              ↖ Refit 12 และ rerun 12c ได้สูงสุด 2 รอบ
 ```
 
-- 11 สร้าง Raw Crown Candidates
-- 12 หา Preliminary Spacing/Pattern
-- 12b ตรวจจำนวนจริงด้วย Canopy + Spacing + จุดปลูก
+- 11 สร้าง Raw Crown Candidates และ Touching/Merged Clusters
+- 12 หา Preliminary Spacing/Pattern จากต้นเดี่ยว High-confidence
+- 12c แยก Image-supported Crown Centers ในเรือนยอดชิดด้วย Local Spacing และ 2D Row Support
+- 12b รวมผล 11/12/12c และตัดสิน Final Count
 - 13 คำนวณ Survival/Mortality
 - 14 สร้าง Candidate Boundary
 - 15 QA
 
-ห้ามนำผล Skill 11 ไปคำนวณอัตรารอดหรือสร้างขอบเขตโดยข้าม 12b
+กฎ Separation:
+
+```text
+11 raw detection
+12 preliminary pattern
+12c touching crown center evidence
+12b validated final count
+```
+
+ห้ามนำผล Skill 11 หรือ 12c ไปคำนวณอัตรารอดหรือสร้างขอบเขตโดยข้าม 12b
 
 ## Stage 3 — Optional Context
 
@@ -85,6 +95,8 @@ surveyed_field / approved_plan
 
 ```text
 raw_detection
+preliminary_pattern
+touching_crown_evidence
 validated_count
 survival_status
 boundary
@@ -94,6 +106,27 @@ model_evaluation
 ```
 
 ห้ามใช้ชื่อหรือ Layer เดียวแทนหลาย Stage
+
+## Touching Crown Contract
+
+Skill 12c ต้องส่ง:
+
+```text
+touching_crown_centers.gpkg
+touching_crown_clusters_validated.gpkg
+touching_crown_unresolved.gpkg
+touching_crown_metrics.json
+```
+
+และต้องรักษา:
+
+```text
+grid_created_tree_count = 0
+center_without_canopy_count = 0
+cluster_processed_ratio = 1.0
+```
+
+Skill 12b เป็นผู้ตัดสิน Final Class เสมอ
 
 ## Token-efficient Loading
 
