@@ -1,40 +1,85 @@
 # Skill Index
 
-Repository นี้แยกความสามารถออกเป็น Skill ตามหน้าที่ เพื่อให้ Codex เลือกใช้เฉพาะส่วนที่เกี่ยวข้องและลดการตีความปนกัน
+เลือกใช้ Skill ตามงานและอ่านเฉพาะไฟล์ที่จำเป็น เพื่อลด Token
 
-## ลำดับ Skill
+## Shared
 
-| ลำดับ | Skill | หน้าที่ |
+| Skill | หน้าที่ |
+|---|---|
+| `01-large-orthomosaic-reader` | อ่าน GeoTIFF/COG/VRT ขนาดใหญ่ สร้าง Overview, Tile Index และ Manifest |
+
+## ปลูกเสริม
+
+| Skill | หน้าที่ |
+|---|---|
+| `00-enrichment-analysis-orchestrator` | เรียก Workflow ปลูกเสริมทั้งชุด |
+| `02-mangrove-land-cover-classifier` | จำแนกสิ่งปกคลุมหลัก |
+| `03-rhizophora-crown-detector` | ตรวจพุ่มโกงกาง Candidate |
+| `04-weed-groundcover-classifier` | แยกวัชพืชและการบดบัง |
+| `05-nypa-palm-detector` | ตรวจต้นจาก |
+| `06-existing-canopy-occlusion` | ป่าเดิม เงา และเรือนยอดปิด |
+| `07-enrichment-gap-analyzer` | วิเคราะห์ช่องว่างแบบ Gap-by-gap |
+| `08-enrichment-boundary-delineator` | สร้างขอบเขตปลูกเสริม Candidate |
+| `09-enrichment-qa-human-review` | QA และชุด Human Review |
+
+## ปลูกเต็มพื้นที่
+
+| Skill | หน้าที่ |
+|---|---|
+| `10-full-area-planting-orchestrator` | เรียก Workflow ปลูกเต็มทั้งชุด |
+| `11-full-area-tree-detector` | ตรวจต้นปลูกเป็นรายพุ่ม แยกเงาและต้นเดิม |
+| `12-planting-grid-inference` | หาแถว กริด ระยะปลูก และตำแหน่งต้นหาย |
+| `13-full-area-mortality-analyzer` | วิเคราะห์อัตรารอด ต้นหาย และพื้นที่ตรวจไม่ได้ |
+| `14-full-area-boundary-delineator` | สร้าง Core, Evidence Boundary และ Uncertain Edge |
+| `15-full-area-qa-human-review` | QA และชุด Human Review สำหรับปลูกเต็ม |
+
+# Token-efficient load sets
+
+| งาน | อ่านเต็ม | อ่านเฉพาะ Output Contract |
 |---|---|---|
-| 00 | `enrichment-analysis-orchestrator` | วางแผนและเรียก Skill ทั้งชุดตามลำดับ |
-| 01 | `large-orthomosaic-reader` | อ่าน GeoTIFF/COG/VRT ขนาดใหญ่แบบ Overview และ Tile |
-| 02 | `mangrove-land-cover-classifier` | จำแนกสิ่งปกคลุมหลักจากสี รูปทรง Texture และบริบท |
-| 03 | `rhizophora-crown-detector` | ตรวจพุ่มโกงกางเป้าหมายเป็นรายต้นหรือรายพุ่ม |
-| 04 | `weed-groundcover-classifier` | แยกวัชพืชและพืชคลุมดินออกจากต้นไม้เป้าหมาย |
-| 05 | `nypa-palm-detector` | แยกต้นจากด้วยรูปทรงใบแบบรัศมีและ Texture |
-| 06 | `existing-canopy-occlusion` | แยกป่าเดิมและพื้นที่เรือนยอดปิดที่มองไม่เห็นด้านล่าง |
-| 07 | `enrichment-gap-analyzer` | วิเคราะห์ช่องว่างที่มีหลักฐานปลูกเสริมแบบ Gap-by-gap |
-| 08 | `enrichment-boundary-delineator` | สร้าง Core, Evidence Boundary และ Uncertain Boundary |
-| 09 | `enrichment-qa-human-review` | ตรวจ QA, Warning, Debug Layer และเตรียม Human Review |
+| อ่านภาพ/แบ่ง Tile | 01 | ไม่มี |
+| นับต้นปลูกเต็ม | 01, 11 | ไม่มี |
+| หา Grid | 12 | 11 |
+| วิเคราะห์อัตรารอด | 13 | 11, 12 |
+| วงขอบเขตปลูกเต็ม | 14 | 11, 12, 13 |
+| QA ปลูกเต็ม | 15 | 11–14 |
+| จำแนกสิ่งปกคลุมปลูกเสริม | 01, 02 | ไม่มี |
+| หาโกงกางในปลูกเสริม | 03 | 01, 02 |
+| แยกวัชพืช | 04 | 01, 02 |
+| แยกต้นจาก | 05 | 01, 02 |
+| วิเคราะห์ Gap ปลูกเสริม | 07 | 02–06 |
+| วงขอบเขตปลูกเสริม | 08 | 07 |
+| QA ปลูกเสริม | 09 | 02–08 |
 
-## กฎการเลือกใช้
+## วิธีอ่าน Output Contract
 
-- งานเต็มกระบวนการ: เริ่มที่ Skill 00
-- ต้องการอ่านภาพใหญ่หรือแบ่ง Tile เท่านั้น: Skill 01
-- ต้องการแผนที่สิ่งปกคลุม: Skill 02
-- ต้องการนับหรือหาโกงกาง: Skill 03
-- ต้องการหาเฉพาะวัชพืช: Skill 04
-- ต้องการหาเฉพาะต้นจาก: Skill 05
-- ต้องการวิเคราะห์พื้นที่ที่ถูกเรือนยอดเดิมบดบัง: Skill 06
-- ต้องการหาช่องว่างปลูกเสริมแต่ยังไม่วงขอบเขต: Skill 07
-- ต้องการสร้าง Polygon: Skill 08
-- ต้องการตรวจผลก่อนส่งมอบ: Skill 09
+เมื่อไม่ต้องอ่าน Skill ก่อนหน้าทั้งไฟล์ ให้อ่านเฉพาะหัวข้อ:
 
-## ข้อบังคับร่วม
+```text
+Inputs
+Outputs
+Required attributes
+Required metrics
+Warnings
+```
 
-1. ห้ามใช้สีเพียงอย่างเดียวเป็นคำตอบสุดท้าย
-2. ภาพ Crop ใช้เป็นตัวอย่างการตีความ ไม่ใช่พิกัดจริง
-3. งานจริงต้องรักษา CRS และ Affine Transform ของ Orthomosaic
-4. `target_rhizophora` หมายถึงวัตถุที่มีลักษณะคล้ายโกงกางเป้าหมายจากภาพ ไม่ได้ยืนยันว่าเกิดจากการปลูก
-5. พื้นที่ใต้เรือนยอดปิดต้องเป็น `closed_canopy_unknown` ไม่ใช่ `not_planted`
-6. AI สร้างได้เฉพาะ Candidate Result และห้ามตั้งสถานะ `approved`
+ห้ามส่ง Prompt และคำอธิบายจากขั้นก่อนหน้าซ้ำทั้งหมด ให้ส่งเพียง:
+
+```text
+source_file_paths
+schema/version
+crs
+config_used
+summary_metrics
+warnings
+```
+
+# Routing rules
+
+- งานครบปลูกเสริม: Skill 00
+- งานครบปลูกเต็ม: Skill 10
+- ห้ามอ่าน Skill 00–09 เมื่องานเป็นปลูกเต็ม เว้นแต่ต้องใช้ Classifier เฉพาะจริง
+- ห้ามอ่าน Skill 10–15 เมื่องานเป็นปลูกเสริม
+- ภาพ Crop ใช้สอนการตีความ ไม่ใช่พิกัดจริง
+- งานจริงต้องรักษา CRS และ Affine Transform
+- AI สร้างได้เฉพาะ Candidate Result และห้ามตั้งสถานะ `approved`
