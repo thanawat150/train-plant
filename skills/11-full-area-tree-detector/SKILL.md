@@ -1,36 +1,48 @@
 ---
 name: full-area-tree-detector
-description: ตรวจต้นปลูกเป็นรายพุ่มในแปลงปลูกเต็มพื้นที่ แยกเงา ต้นเดิมขนาดใหญ่ และวัตถุรบกวน พร้อมป้องกันการนับซ้ำระหว่าง Tile
+description: สร้าง Raw Crown/Tree Candidates ในแปลงปลูกเต็มพื้นที่จากภาพจริง โดยแยกเงา ต้นเดิมขนาดใหญ่ และสิ่งรบกวนเบื้องต้น ผลยังไม่ใช่จำนวนต้นสุดท้ายและต้องผ่าน Skill 21
 ---
 
 # Full-area Tree Detector
 
 ## Scope
 
-ทำเฉพาะการตรวจต้นหรือพุ่ม Candidate ห้ามอนุมานกริด ห้ามวงขอบเขต และห้ามสรุปอัตรารอดใน Skill นี้
+ทำเฉพาะ Raw Detection จากเรือนยอดที่มองเห็น ห้ามอนุมานต้นจากกริด ห้ามสรุปจำนวนสุดท้าย ห้ามวงขอบเขต และห้ามคำนวณอัตรารอด
+
+ผลจาก Skill นี้ต้องผ่าน Skill 12 และ Skill 21 ก่อนใช้เป็นจำนวนต้น
 
 ## Inputs
 
 - Orthomosaic หรือ Tile Manifest จาก Skill 01
 - CRS และ Pixel Size
 - Optional AOI
+- Optional Surface/Hydrology Mask จาก Skill 16
+- Optional Palm/Coconut Exclusion จาก Skill 17
 
 ## Detection rules
 
-- หนึ่งพุ่มที่แยกได้ = หนึ่ง Candidate Object
-- ใช้ Color + Shape + Texture + Object Scale
-- แยกเงาด้วยทิศทางเงาที่สอดคล้องกันและตำแหน่งติดกับเรือนยอด
-- แยก `existing_large_tree` เมื่อขนาดพุ่มผิดจากประชากรต้นปลูกอย่างชัดเจน
+- ตรวจจาก Canopy Evidence ไม่ตรวจจากจุดสีหรือ Texture เดี่ยว
+- สร้างทั้ง Crown Polygon และ Candidate Center เมื่อทำได้
+- จุดบนดินโล่ง น้ำเปล่า ถนน คันดิน หรือ Shadow-only ต้องไม่ถูกถือเป็นต้น
+- น้ำไม่ใช่ Exclusion ทั้งหมด: ต้นในน้ำตื้นนับได้เมื่อมีเรือนยอดจริงรองรับ
+- แยก `existing_large_tree_candidate` เมื่อขนาด รูปทรง หรือบริบทต่างจากประชากรต้นปลูกอย่างชัดเจน
+- แยก `touching_crown_cluster` เมื่อหลายพุ่มแตะกัน
+- แยก `merged_canopy_candidate` เมื่อขอบพุ่มรวมเป็นผืนและยังไม่ทราบจำนวนต้น
 - รวม Detection ซ้ำใน Tile Overlap ด้วยตำแหน่งและ Crown Overlap
-- พุ่มที่ไม่ชัดให้เป็น `probable_planted_tree` หรือ `unknown_crown`
+- ห้ามใช้ Expected Count หรือ Grid เพื่อเติม Detection ใน Skill นี้
 
 ## Classes
 
 ```text
-planted_tree_candidate
-probable_planted_tree
-existing_large_tree
-shadow
+isolated_planted_crown_candidate
+probable_planted_crown_candidate
+touching_crown_cluster
+merged_canopy_candidate
+existing_large_tree_candidate
+palm_or_other_large_crown_candidate
+shadow_only
+bare_ground_false_candidate
+water_surface_false_candidate
 unknown_crown
 ```
 
@@ -42,6 +54,11 @@ class
 confidence
 crown_area_sqm
 crown_diameter_m
+crown_center_x
+crown_center_y
+canopy_support_score
+center_clarity
+touching_cluster_id
 source_tile
 source_raster
 edge_distance_px
@@ -53,16 +70,28 @@ review_status
 
 ```text
 planted_tree_candidates.gpkg
+raw_crown_objects.gpkg
+touching_crown_clusters.gpkg
 existing_large_trees.gpkg
 shadow_mask.tif
+optional canopy_mask.tif
 tree_detection_preview.png
 tree_detection_metrics.json
 ```
 
 ## QA
 
+- ตรวจจุด Candidate ที่ไม่มีพุ่มจริงรองรับ
+- ตรวจ Candidate บนดิน น้ำ ถนน และ Shadow-only
 - ตรวจการนับซ้ำบริเวณ Tile Overlap
-- ตรวจเงาที่ถูกนับเป็นต้น
-- ตรวจต้นเดิมขนาดใหญ่ที่ถูกนับเป็นต้นปลูก
-- รายงานจำนวน High/Medium/Low Confidence
-- ห้ามปรับ Threshold เพื่อให้จำนวนตรงกับค่าที่คาดไว้โดยไม่มีหลักฐาน
+- ตรวจต้นเดิมขนาดใหญ่ที่ถูกเสนอเป็นต้นปลูก
+- ตรวจพุ่มเดียวที่ถูกแบ่งเป็นหลายจุด
+- ตรวจเรือนยอดชิดที่ถูกบังคับเป็นหนึ่งต้น
+- รายงานจำนวน High/Medium/Low Confidence และ Cluster ที่ยังแยกไม่ได้
+- ห้ามปรับ Threshold เพื่อให้จำนวนตรงกับค่าที่คาดไว้
+
+## Downstream
+
+- Skill 12 ใช้เฉพาะต้นเดี่ยว High-confidence เพื่อหา Reference Spacing และ Grid เบื้องต้น
+- Skill 21 ตรวจ Raw Detection ทั้งหมดร่วมกับ Grid/จุดปลูก แล้วสร้างจำนวนต้นที่ผ่านการ Validation
+- Skill 13 ห้ามใช้ผล Skill 11 โดยตรง
