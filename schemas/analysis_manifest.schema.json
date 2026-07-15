@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Train Plant Analysis Manifest v2",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "project_id",
+    "plot_code",
+    "workflow",
+    "source_raster",
+    "working_crs",
+    "analysis_version",
+    "review_status",
+    "outputs"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "project_id": {"type": "string", "minLength": 1},
+    "plot_code": {"type": "string", "minLength": 1},
+    "workflow": {"enum": ["enrichment", "full_area", "field_plan", "feedback", "evaluation"]},
+    "source_raster": {"type": "string"},
+    "acquisition_date": {"type": ["string", "null"], "format": "date"},
+    "working_crs": {"type": "string"},
+    "analysis_version": {"type": "string"},
+    "config_path": {"type": ["string", "null"]},
+    "skills_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["skill_id", "path"],
+        "properties": {
+          "skill_id": {"type": "string"},
+          "path": {"type": "string"},
+          "version": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "input_layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "source_class", "reliability"],
+        "properties": {
+          "path": {"type": "string"},
+          "source_class": {"enum": ["surveyed_field", "contract_or_approved_plan", "existing_gis", "human_digitized_from_orthomosaic", "model_inferred", "unknown"]},
+          "reliability": {"enum": ["R1_verified_field_or_approved", "R2_trusted_existing_gis", "R3_human_digitized_candidate", "R4_model_inferred", "R5_unknown"]},
+          "crs": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "count_summary": {
+      "type": "object",
+      "properties": {
+        "raw_detection_count": {"type": ["integer", "null"], "minimum": 0},
+        "validated_confirmed_count": {"type": ["integer", "null"], "minimum": 0},
+        "validated_spacing_supported_count": {"type": ["integer", "null"], "minimum": 0},
+        "estimated_tree_count_min": {"type": ["integer", "null"], "minimum": 0},
+        "estimated_tree_count_max": {"type": ["integer", "null"], "minimum": 0},
+        "false_positive_count": {"type": ["integer", "null"], "minimum": 0},
+        "existing_large_tree_count": {"type": ["integer", "null"], "minimum": 0},
+        "not_observable_count": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "survival_summary": {
+      "type": "object",
+      "properties": {
+        "survival_rate_confirmed": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "survival_rate_estimated_min": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "survival_rate_estimated_max": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "confirmed_missing_count": {"type": ["integer", "null"], "minimum": 0},
+        "probable_missing_count": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": {"type": "string"},
+          "severity": {"enum": ["info", "warning", "critical"]},
+          "message": {"type": "string"},
+          "geometry_ref": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "review_status": {"enum": ["draft", "needs_human_review", "rework", "reviewed", "rejected", "approved"]},
+    "outputs": {"type": "object", "additionalProperties": {"type": ["string", "array", "null"]}}
+  }
+}
