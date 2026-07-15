@@ -1,50 +1,63 @@
 ---
 name: planting-evidence-boundary
-description: Compatibility router สำหรับงานเดิมที่เรียก Planting Evidence Boundary โดยส่งต่องานไปยังชุด Skill แยกใน skills/ ใช้เพื่อรองรับ Prompt เก่าเท่านั้น งานใหม่ให้เรียก Skill เฉพาะทางโดยตรง
+beschreibung: Compatibility router สำหรับ Prompt เก่า งานใหม่ให้เรียก Skill ใน skills/ ตาม registry โดยตรง
 ---
 
-# Planting Evidence Boundary — Compatibility Router
+# Planting Evidence Boundary — Legacy Router
 
-ไฟล์นี้ไม่ใช่ Skill วิเคราะห์แบบรวมทั้งหมดอีกต่อไป
+โฟลเดอร์นี้เป็น Legacy Reference ไม่ใช่ Config, Schema หรือ Workflow หลัก
 
-โครงสร้างหลักถูกแยกตามหน้าที่เพื่อป้องกัน Codex ปนการจำแนกชนิดพืช การตรวจต้น และการวงขอบเขตเข้าด้วยกัน
+## งานปลูกเสริม
 
-## งานเต็มระบบ
+```text
+skills/00-enrichment-analysis-orchestrator/SKILL.md
+```
 
-เรียก:
+## งานปลูกเต็มพื้นที่
 
-`skills/00-enrichment-analysis-orchestrator/SKILL.md`
+```text
+skills/10-full-area-planting-orchestrator/SKILL.md
+```
 
-## Routing Table
+## Routing ใหม่
 
-| คำขอของผู้ใช้ | Skill ที่ต้องใช้ |
+| งาน | Skill |
 |---|---|
-| อ่าน Orthomosaic ขนาดใหญ่หรือแบ่ง Tile | `skills/01-large-orthomosaic-reader/SKILL.md` |
-| จำแนกสิ่งปกคลุม | `skills/02-mangrove-land-cover-classifier/SKILL.md` |
-| หา/นับพุ่มโกงกาง | `skills/03-rhizophora-crown-detector/SKILL.md` |
-| จำแนกวัชพืช | `skills/04-weed-groundcover-classifier/SKILL.md` |
-| ตรวจต้นจาก | `skills/05-nypa-palm-detector/SKILL.md` |
-| แยกป่าเดิม เงา และเรือนยอดปิด | `skills/06-existing-canopy-occlusion/SKILL.md` |
-| วิเคราะห์ช่องว่างปลูกเสริม | `skills/07-enrichment-gap-analyzer/SKILL.md` |
-| วง Candidate Boundary | `skills/08-enrichment-boundary-delineator/SKILL.md` |
-| ตรวจ QA และเตรียม Human Review | `skills/09-enrichment-qa-human-review/SKILL.md` |
+| อ่าน Raster | `skills/01-large-orthomosaic-reader/SKILL.md` |
+| ตรวจ Input/จุดปลูก/CRS | `skills/01b-project-input-preflight/SKILL.md` |
+| จำแนกปลูกเสริม | `skills/02-mangrove-land-cover-classifier/SKILL.md` |
+| Raw Detection ปลูกเต็ม | `skills/11-full-area-tree-detector/SKILL.md` |
+| หา Spacing/Pattern | `skills/12-planting-grid-inference/SKILL.md` |
+| ตรวจจำนวนต้นจริง | `skills/12b-spacing-guided-tree-count-validator/SKILL.md` |
+| Survival/Mortality | `skills/13-full-area-mortality-analyzer/SKILL.md` |
+| เลือกจุดตรวจ | `skills/18-field-inspection-priority-analyzer/SKILL.md` |
+| วาง Route บก/เรือ | `skills/19-multimodal-access-route-planner/SKILL.md` |
+| จัด Field Mission | `skills/20-field-inspection-mission-planner/SKILL.md` |
+| รับ Ground Truth | `skills/21-field-feedback-ground-truth-ingestor/SKILL.md` |
+| ประเมินโมเดล | `skills/22-model-calibration-evaluator/SKILL.md` |
+
+Registry หลัก:
+
+```text
+skills/registry.yaml
+```
 
 ## Legacy References
 
-ไฟล์อื่นภายใน `planting-evidence-boundary/` เช่น:
+ไฟล์อื่นในโฟลเดอร์นี้ยังใช้เป็นตัวอย่างเก่าได้ แต่กฎล่าสุดให้ยึด:
 
-- `LARGE_ORTHOMOSAIC_WORKFLOW.md`
-- `SKILL_ADDENDUM_ADVANCED.md`
-- `QA_DEBUG_OUTPUTS.md`
-- `examples/`
-
-ยังใช้เป็น Reference และชุดตัวอย่างได้ แต่กฎปฏิบัติงานหลักให้ยึด `AGENTS.md` และ Skill ภายใน `skills/`
+```text
+AGENTS.md
+skills/registry.yaml
+skills/README.md
+config/defaults.yaml
+schemas/
+```
 
 ## Mandatory Rules
 
-- ห้ามใช้สีเพียงอย่างเดียว
+- Raw Detection ไม่ใช่จำนวนต้นสุดท้าย
+- ห้ามข้าม Skill 12b ในงานปลูกเต็ม
 - ห้ามใช้ภาพ Crop เป็นพิกัดจริง
-- ห้ามสรุปว่าโกงกาง Candidate เกิดจากการปลูกโดยไม่มีหลักฐานเสริม
-- ห้ามใช้ `closed_canopy_unknown` เป็น `not_planted`
-- ห้ามสร้าง Boundary ก่อนมี Classification, Detection และ Gap Evidence
+- ห้ามสรุปการปลูกหรือสาเหตุการตายเกินหลักฐาน
 - AI ห้ามตั้งสถานะ `approved`
