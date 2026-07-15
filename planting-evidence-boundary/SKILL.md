@@ -1,6 +1,6 @@
 ---
 name: planting-evidence-boundary
-beschreibung: Compatibility router สำหรับ Prompt เก่า งานใหม่ให้เรียก Skill ใน skills/ ตาม registry โดยตรง
+description: Compatibility router สำหรับ Prompt เก่า งานใหม่ให้เรียก Skill ใน skills/ ตาม registry โดยตรง
 ---
 
 # Planting Evidence Boundary — Legacy Router
