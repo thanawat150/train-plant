@@ -1,6 +1,6 @@
 # train-plant
 
-ชุด Skill สำหรับวิเคราะห์ Orthomosaic งานปลูกป่าชายเลน ตั้งแต่ตรวจต้น หาแนวปลูก ตรวจจำนวน วิเคราะห์อัตรารอด วงขอบเขต วางแผนลงพื้นที่ และนำผลภาคสนามกลับมาวัดความแม่นยำ
+ชุด Skill สำหรับวิเคราะห์ Orthomosaic งานปลูกป่าชายเลน ตั้งแต่ตรวจต้น หาแนวปลูก แยกเรือนยอดชิด ตรวจจำนวน วิเคราะห์อัตรารอด วงขอบเขต วางแผนลงพื้นที่ และนำผลภาคสนามกลับมาวัดความแม่นยำ
 
 > ผลทั้งหมดเป็น Candidate จนกว่าจะผ่าน Human Review
 
@@ -30,7 +30,8 @@ skills/00-enrichment-analysis-orchestrator/SKILL.md
 → 01b ตรวจ Input
 → 11 Raw Detection
 → 12 Preliminary Spacing/Pattern
-→ 12b ตรวจจำนวนจริงด้วย Canopy + Spacing
+→ 12c แยก Crown Center ในเรือนยอดชิด
+→ 12b ตรวจจำนวนสุดท้ายด้วย Canopy + Spacing
 → 13 Survival/Mortality
 → 14 Boundary
 → 15 QA
@@ -44,11 +45,14 @@ skills/10-full-area-planting-orchestrator/SKILL.md
 
 กฎสำคัญ:
 
-- จุดแดงจาก Detector ยังไม่ใช่จำนวนต้นสุดท้าย
+- จุดจาก Detector ยังไม่ใช่จำนวนต้นสุดท้าย
+- ห้ามข้าม Skill 12c เมื่อมีเรือนยอดชิดหรือรวมเป็นผืน
 - ห้ามข้าม Skill 12b
 - Grid ห้ามสร้างต้นที่ไม่มีเรือนยอด
+- `grid_created_tree_count` และ `center_without_canopy_count` ต้องเป็น 0
 - น้ำไม่ใช่ Exclusion ทั้งหมด แต่จุดบนผิวน้ำที่ไม่มีพุ่มต้องตัดออก
-- เรือนยอดชิดกันให้นับจากศูนย์กลาง ระยะปลูก และแนวปลูก
+- เรือนยอดชิดให้นับจาก Crown Center ที่มีหลักฐานภาพ ร่วมกับระยะและแนวปลูก
+- ภาพละเอียดไม่พอให้รายงาน Unresolved ห้ามบังคับแยกต้น
 - ต้นเดิมขนาดใหญ่ไม่นับ และจุดใต้พุ่มใหญ่เป็น Not Observable
 - แปลงนากุ้งแบ่งเป็นหลาย Planting Pattern Block ได้
 
@@ -80,21 +84,21 @@ Ground Truth ต้องมีผู้ตรวจ วันที่ แล�
 - `config/defaults.yaml` — ค่าเริ่มต้นที่ต้องปรับตามโครงการ
 - `schemas/` — Data Contracts
 
-## Prompt: วิเคราะห์แปลงปลูกเต็ม 17-STC
+## Prompt: วิเคราะห์แปลงปลูกเต็ม
 
 ```text
 อ่าน AGENTS.md
 ใช้ skills/10-full-area-planting-orchestrator/SKILL.md
 
-Plot code: 17-STC
+Plot code: <PLOT_CODE>
 Orthomosaic: <ORTHOMOSAIC_PATH>
-Output: <OUTPUT_PATH>/17-STC
+Output: <OUTPUT_PATH>/<PLOT_CODE>
 Config: config/defaults.yaml
 
 ทำ Production Preflight ด้วย Skill 01 และ 01b
-จากนั้นรัน 11 → 12 → 12b → 13 → 14 → 15
+จากนั้นรัน 11 → 12 → 12c → 12b → 13 → 14 → 15
 
-ห้ามใช้ Raw Detection เป็นจำนวนต้นสุดท้าย
+ห้ามใช้ Raw Detection หรือ Grid เป็นจำนวนต้นสุดท้าย
 หยุดให้ตรวจทุก Checkpoint
 ห้ามตั้งสถานะ approved
 ```
@@ -105,7 +109,7 @@ Config: config/defaults.yaml
 อ่าน AGENTS.md
 ใช้ Skill 18 → 19 → 20
 
-Plot code: 17-STC
+Plot code: <PLOT_CODE>
 Analysis outputs: <ANALYSIS_OUTPUT_PATH>
 Land routes: <LAND_ROUTE_PATH>
 Boat routes: <BOAT_ROUTE_PATH>
