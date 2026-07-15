@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Train Plant Field Observation",
+  "type": "object",
+  "required": [
+    "observation_id",
+    "plot_code",
+    "observation_class",
+    "observer_name",
+    "observation_datetime",
+    "gps_accuracy_m",
+    "human_review_status"
+  ],
+  "properties": {
+    "observation_id": {"type": "string"},
+    "inspection_id": {"type": ["string", "null"]},
+    "position_id": {"type": ["string", "null"]},
+    "plot_code": {"type": "string"},
+    "observation_class": {
+      "enum": [
+        "planted_tree_alive",
+        "planted_tree_dead",
+        "planting_position_empty",
+        "planting_not_performed",
+        "natural_tree",
+        "existing_large_tree",
+        "nypa_palm",
+        "other_palm_or_coconut",
+        "weed_or_groundcover",
+        "open_water",
+        "bare_ground",
+        "not_observable",
+        "wrong_location",
+        "unknown"
+      ]
+    },
+    "previous_ai_class": {"type": ["string", "null"]},
+    "correction_type": {"type": ["string", "null"]},
+    "observer_name": {"type": "string", "minLength": 1},
+    "observation_datetime": {"type": "string", "format": "date-time"},
+    "gps_accuracy_m": {"type": "number", "minimum": 0},
+    "longitude": {"type": ["number", "null"], "minimum": -180, "maximum": 180},
+    "latitude": {"type": ["number", "null"], "minimum": -90, "maximum": 90},
+    "photo_refs": {"type": "array", "items": {"type": "string"}},
+    "notes": {"type": ["string", "null"]},
+    "source_analysis_version": {"type": ["string", "null"]},
+    "feedback_version": {"type": ["string", "null"]},
+    "human_review_status": {"enum": ["reviewed_confirmed", "reviewed_corrected", "reviewed_unresolved", "rejected_observation"]}
+  }
+}
