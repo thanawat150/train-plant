@@ -2,9 +2,9 @@
 
 ## Purpose
 
-ควบคุม Workflow วิเคราะห์แปลงปลูกเสริมและแปลงปลูกเต็มพื้นที่จาก Orthomosaic ขนาดใหญ่ รวมถึงการแปลงผลวิเคราะห์เป็นแผนเข้าตรวจภาคสนามทางบกและทางเรือ
+ควบคุม Workflow วิเคราะห์แปลงปลูกเสริมและแปลงปลูกเต็มพื้นที่จาก Orthomosaic ขนาดใหญ่ รวมถึงการแปลงผลเป็นแผนเข้าตรวจภาคสนามทางบกและทางเรือ
 
-ผลลัพธ์เป็น Candidate Evidence, Candidate Route และ Candidate Mission ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย ไม่ใช่ผลตรวจดินทางห้องปฏิบัติการ และไม่ใช่การรับรองความปลอดภัยของเส้นทาง
+ผลลัพธ์เป็น Candidate Evidence, Candidate Count, Candidate Route และ Candidate Mission ต้องผ่าน Human Review
 
 ## Mandatory token routing
 
@@ -17,13 +17,13 @@
 3. Orchestrator หรือ Skill ที่ผู้ใช้เรียก
 4. Skill ก่อนหน้าเฉพาะ Output Contract เมื่อจำเป็น
 
-เมื่อจบแต่ละขั้น ให้สรุป Output Path, Schema และ Warning แบบสั้น แล้วเริ่มขั้นถัดไปด้วยไฟล์ผลลัพธ์แทนการส่งบริบทเดิมทั้งหมด
+เมื่อจบแต่ละขั้น ส่งต่อเพียง Output Path, Schema, Metrics และ Warnings ไม่ส่งบริบทเดิมซ้ำทั้งหมด
 
 ## Choose one analysis workflow
 
 ### Enrichment planting
 
-ใช้เมื่อปลูกแทรกในช่องว่างของป่าเดิม มีวัชพืช ต้นจาก เรือนยอดปิด และรูปแบบไม่เป็นกริดต่อเนื่อง
+ใช้เมื่อปลูกแทรกตามช่องว่างป่าเดิม รูปแบบไม่เป็นกริดต่อเนื่อง
 
 เริ่มที่:
 
@@ -31,57 +31,13 @@
 
 ### Full-area planting
 
-ใช้เมื่อต้นปลูกครอบคลุมพื้นที่กว้าง เห็นแถว กริด หรือระยะปลูกซ้ำ และช่องว่างส่วนใหญ่มีแนวโน้มเป็นต้นหายหรือต้นตาย
+ใช้เมื่อต้นปลูกครอบคลุมพื้นที่กว้าง เห็นแถว กริด ระยะปลูกซ้ำ หรือ Planting Block ในนากุ้ง
 
 เริ่มที่:
 
 `skills/10-full-area-planting-orchestrator/SKILL.md`
 
-ห้ามผสมกฎของสอง Workflow โดยไม่มีเหตุผล
-
-## Optional shared skills
-
-### Skill 16 — Surface/Hydrology
-
-เรียกเมื่อภาพมีดิน เลน น้ำขัง แอ่งน้ำ ร่องน้ำ หรือ Surface Zone ต่างกันชัด
-
-- ใช้ Class ที่มองเห็นจากภาพเท่านั้น
-- `possible_salt_crust` ไม่ใช่ผลยืนยันดินเค็ม
-- ห้ามสรุป pH, EC, Acid Sulfate Soil หรือความเหมาะสมปลูกจากสีภาพ
-
-### Skill 17 — Palm/Coconut
-
-เรียกเมื่อตรวจพบต้นเดี่ยวทรงดาวหรือรัศมี มี Crown Center ชัด หรืออาจเห็นลำต้น/เงาลำต้น
-
-- ต้นจากมักเป็นกอหรือผืน ใบหลายกอซ้อน ศูนย์กลางไม่ชัด และไม่มีลำต้นเด่น
-- ห้ามเรียกทุก Crown แบบรัศมีว่า `nypa_palm`
-- เมื่อแยกชนิดไม่ได้ให้ใช้ `palm_unknown`
-
-### Skill 18 — Inspection Priority
-
-เรียกเมื่อมีผลวิเคราะห์แล้วและต้องการเลือกจุดที่ควรเข้าตรวจ
-
-- ใช้ความไม่แน่นอน ความเสียหาย ผลกระทบ การเปลี่ยนแปลง และความเป็นตัวแทน
-- ต้องมีทั้งจุดปัญหาและ High-confidence QA Control
-- ห้ามเลือกเฉพาะจุดใกล้ทางเข้า
-
-### Skill 19 — Land/Boat Access
-
-เรียกเมื่อมี Candidate Inspection Points และต้องวางเส้นทางเข้าทางบก/ทางเรือ
-
-- ใช้ Network Distance และเวลาเดินทาง ไม่ใช้ระยะเส้นตรง
-- แยก Land, Boat, Walk และ Transfer Cost
-- Candidate Route จากภาพต้องให้ทีมพื้นที่ยืนยัน
-
-### Skill 20 — Field Mission
-
-เรียกเมื่อมี Priority และ Access Assessment แล้ว
-
-- รวมจุดเป็น Mission, วัน, ทีม และ Checklist
-- จุดสำคัญแต่ไกลต้องเป็น `special_mission` หรือ `remote_cluster_mission`
-- ห้ามตัดจุด P1 ทิ้งเพียงเพราะไกล
-
-Optional Skill ต้องไม่ถูกอ่านเมื่อไม่มี Trigger
+ห้ามผสมกฎสอง Workflow โดยไม่มีเหตุผล
 
 ## Shared raster rules
 
@@ -92,40 +48,80 @@ Optional Skill ต้องไม่ถูกอ่านเมื่อไม�
 - รวมผลใน CRS ต้นฉบับ ไม่รวมด้วย Local Pixel Coordinate
 - ห้ามใช้ Tile Edge เป็นขอบเขตจริง
 
-## Full-area pipeline
+## Full-area mandatory pipeline
 
 ```text
 Skill 01: inspect and tile
-→ Skill 11: detect planted-tree candidates
-→ Skill 12: infer rows and grid
-→ Skill 13: analyze survival and mortality
-→ Skill 14: delineate full-area boundary
+→ Skill 11: raw crown/tree detection
+→ Skill 12: preliminary rows, spacing and planting-pattern blocks
+→ Skill 21: spacing-guided tree count validation
+→ Skill 13: survival and mortality
+→ Skill 14: full-area boundary
 → Skill 15: QA and human review
 ```
 
-Optional Analysis Context:
+ห้ามข้าม Skill 21 และห้ามใช้ Raw Detection จาก Skill 11 คำนวณอัตรารอด
 
-```text
-Skill 16: surface/hydrology context
-Skill 17: palm/coconut exclusion
-```
+## Full-area interpretation rules
 
-Optional Field Planning:
+### Raw detection
 
-```text
-Skill 18: inspection priority
-→ Skill 19: land/boat access routes
-→ Skill 20: missions and day plan
-```
+- จุดแดงหรือ Detection Point เป็น Raw Candidate ไม่ใช่จำนวนต้นสุดท้าย
+- Candidate ต้องมีเรือนยอดจริงรองรับ
+- จุดบนดิน น้ำเปล่า ถนน คันดิน วัชพืช หรือ Shadow-only ต้องถูกตรวจเป็น False Positive
 
-กฎสำคัญ:
+### Water context
 
-- แยกเงา ต้นเดิม และปาล์ม/มะพร้าวออกจากต้นปลูก
-- ตำแหน่งต้นหายต้องมี Grid รองรับ
-- `not_observable` ไม่ใช่ต้นตาย
-- พื้นที่ต้นรอดต่ำยังอยู่ในขอบเขตได้เมื่อ Grid ต่อเนื่อง
-- สีพื้นน้ำหรือเลนไม่ใช่แนวแบ่งอัตโนมัติ
-- Surface Class ใช้เปรียบเทียบกับอัตรารอดได้ แต่ห้ามสรุปสาเหตุโดยอัตโนมัติ
+- ห้ามใช้ Water Mask ตัดต้นทั้งหมด เพราะต้นป่าชายเลนสามารถขึ้นในน้ำตื้นได้
+- จุดบนผิวน้ำที่ไม่มีพุ่ม = `false_positive_on_water`
+- จุดในบริบทน้ำที่มีเรือนยอดจริง = Valid Candidate
+
+### Planting pattern
+
+- ต้นปลูกต้องมีทั้ง Canopy Evidence และ Pattern/Spacing Support
+- Pattern ที่รองรับ: Row/Grid, Staggered Grid, Locally Regular Full-area Block และ Shrimp-pond Planting Block
+- จุดฟุ้งที่ไม่มีแนว ไม่มี Local Spacing Consistency และไม่มีพุ่มจริง = Detection Failure
+- รองรับหลาย Pattern Block เมื่อแนวหรือระยะเปลี่ยน
+
+### Touching/merged canopy
+
+- ห้ามใช้ `1 canopy blob = 1 tree`
+- เรือนยอดชิดกันให้นับจาก Crown Center, Reference Spacing, แถว/กริด และ Planned Point
+- Spacing เป็นโครงสร้างสนับสนุน แต่ห้ามสร้าง Surviving Tree เมื่อไม่มี Canopy Evidence
+- กลุ่มที่ยังแยกไม่ได้ต้องรายงาน Min–Max หรือ `unresolved_merged_canopy`
+
+### Existing large trees
+
+- ต้นเดิมขนาดใหญ่ไม่รวมเป็นต้นปลูก
+- ไม่ใช้ Fit Grid หรือ Reference Spacing
+- จุดปลูกใต้พุ่มใหญ่ = `not_observable_under_existing_tree`
+- ห้ามเรียกจุดใต้พุ่มใหญ่ว่าต้นตายโดยอัตโนมัติ
+
+### Survival
+
+- Skill 13 ใช้ `validated_planted_tree_points.gpkg` และ `planting_point_status.gpkg` จาก Skill 21
+- แยก Confirmed, Spacing-supported, Probable, Missing และ Not Observable
+- `not_observable` ไม่อยู่ในตัวหารหลัก
+- รายงาน Confirmed Rate และ Estimated Range แยกกัน
+
+## Optional analysis context
+
+### Skill 16 — Surface/Hydrology
+
+เรียกเมื่อมีดิน เลน น้ำขัง แอ่งน้ำ ร่องน้ำ หรือ Surface Zone ต่างกันชัด
+
+- ใช้ Class ที่มองเห็นจากภาพเท่านั้น
+- `possible_salt_crust` ไม่ใช่ผลยืนยันดินเค็ม
+- ห้ามสรุป pH, EC หรือ Acid Sulfate Soil จากสีภาพ
+
+### Skill 17 — Palm/Coconut
+
+เรียกเมื่อตรวจพบต้นเดี่ยวทรงดาวหรือรัศมีที่อาจปะปนกับต้นปลูก
+
+- ต้นจากมักเป็นกอ/ผืน ศูนย์กลางไม่ชัด
+- ห้ามเรียกทุก Crown แบบรัศมีว่า Nypa
+
+Optional Skill ต้องไม่ถูกอ่านเมื่อไม่มี Trigger
 
 ## Enrichment pipeline
 
@@ -141,26 +137,32 @@ Skill 01: inspect and tile
 → Skill 09: QA and human review
 ```
 
-Optional routing:
+Optional:
 
 ```text
-หลัง Skill 02 → Skill 16 เมื่อมี Surface/Hydrology Trigger
-หลัง Skill 05 → Skill 17 เมื่อมี Single Radial Crown Trigger
+Skill 16: Surface/Hydrology
+Skill 17: Palm/Coconut
 หลัง Skill 09 → Skill 18 → 19 → 20 เมื่อขอ Field Plan
 ```
 
-กฎสำคัญ:
+กฎปลูกเสริม:
 
-- ห้ามใช้สีเพียงอย่างเดียว
+- วิเคราะห์แบบ Gap-by-gap ไม่บังคับ Grid
 - แยกวัชพืช ต้นจาก ปาล์ม/มะพร้าว ป่าเดิม น้ำ เลน เงา และเรือนยอดปิด
 - `closed_canopy_unknown` ไม่ใช่ `not_planted`
-- วิเคราะห์แบบ Gap-by-gap ไม่บังคับ Grid
 - ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
-- Surface Class ไม่ใช่ผลตรวจดิน
 
-## Field inspection decision rules
+## Optional field planning
 
-ต้องรักษาสองคะแนนแยกกัน:
+```text
+Skill 18: inspection priority
+→ Skill 19: land/boat access routes
+→ Skill 20: missions and day plan
+```
+
+### Decision rules
+
+รักษาสองคะแนนแยกกัน:
 
 ```text
 evidence_priority_score
@@ -170,29 +172,30 @@ access_burden_score
 - Evidence Priority ตอบว่า “จำเป็นต้องตรวจหรือไม่”
 - Access Burden ตอบว่า “ต้องใช้ทรัพยากรมากเท่าไร”
 - ระยะไกลไม่ใช่เหตุผลลบจุดสำคัญ
-- จุดไกลหลายจุดให้พิจารณารวม Mission
-- จุดไกลความสำคัญต่ำสามารถเลื่อน แต่ต้องอยู่ใน Backlog
-- ต้องมีจุดตัวแทนทุก Stratum สำคัญและจุด QA ในพื้นที่ Confidence สูง
+- จุดไกลหลายจุดให้รวม Mission เมื่อคุ้มค่า
+- ต้องมีจุดตัวแทนทุก Stratum และ High-confidence QA Control
 
-## Access rules
+### Access rules
 
-- ใช้เส้นทางบก ทางเดิน คันดิน คลอง ทางเรือ ท่าเรือ จุดขึ้นฝั่ง และจุด Transfer ที่มี Source ชัดเจน
+- ใช้เส้นทางบก ทางเดิน คันดิน คลอง ทางเรือ ท่าเรือ จุดขึ้นฝั่ง และ Transfer Point ที่มี Source
 - Route จาก Orthomosaic ใช้ได้สูงสุดเป็น Candidate
 - ห้ามถือคลองทุกเส้นว่าเรือผ่านได้
 - ห้ามถือคันดินทุกเส้นว่าเดินหรือขับรถได้
-- หากไม่มี Network ให้ใช้ `access_network_missing` ไม่สร้างเส้นตรงเป็น Route
-- ต้องรวมเวลาไป–กลับ, Off-network Walk, Mode Transfer, Tide Wait, Permission และ Safety Buffer
+- หากไม่มี Network ให้ใช้ `access_network_missing`
+- ต้องรวมเวลาไป–กลับ Off-network Walk, Transfer, Tide Wait, Permission และ Safety Buffer
 - AI ห้ามรับรองความปลอดภัยของ Route
 
 ## Required checkpoints
 
 ### Full-area
 
-1. Tree Detection Preview
-2. Grid and Missing-position Preview
-3. Survival/Mortality Preview
-4. Optional Surface/Palm Preview
-5. Candidate Boundary Preview
+1. Raw Detection Preview
+2. Reference Spacing และ Pattern Block Preview
+3. Skill 21 Exclusion / False-positive Preview
+4. Merged-canopy Center Preview
+5. Final Count Status Preview
+6. Survival/Mortality Preview
+7. Candidate Boundary Preview
 
 ### Enrichment
 
@@ -229,4 +232,4 @@ rejected
 approved
 ```
 
-ทุกผลลัพธ์ต้องระบุข้อจำกัด ข้อมูลที่ขาด จุดที่ต้องตรวจภาคสนาม และ Route ที่ยังไม่ยืนยัน
+ทุกผลลัพธ์ต้องระบุข้อจำกัด ข้อมูลที่ขาด จุดต้องตรวจภาคสนาม และ Version ของ Skill/Config
