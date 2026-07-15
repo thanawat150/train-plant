@@ -1,6 +1,6 @@
 ---
 name: full-area-planting-orchestrator
-description: ควบคุม Workflow แปลงปลูกเต็ม ตั้งแต่ Preflight, Raw Detection, Spacing Validation, Survival, Boundary, QA ไปจนถึง Field Plan และ Feedback Loop
+description: ควบคุม Workflow แปลงปลูกเต็ม ตั้งแต่ Preflight, Raw Detection, Pattern, Touching Crown Count, Final Validation, Survival, Boundary, QA ไปจนถึง Field Plan และ Feedback Loop
 ---
 
 # Full-area Planting Orchestrator
@@ -9,7 +9,7 @@ description: ควบคุม Workflow แปลงปลูกเต็ม �
 
 - ปลูกครอบคลุมพื้นที่กว้าง
 - มีแถว กริด ระยะซ้ำ หรือ Planting Block ในนากุ้ง
-- เรือนยอดบางส่วนชิดกันแต่ระยะศูนย์กลางยังสม่ำเสมอ
+- เรือนยอดบางส่วนชิด ซ้อน หรือรวมเป็นผืน
 - ต้องการจำนวนต้น ต้นหาย อัตรารอด ขอบเขต หรือแผนเข้าตรวจ
 
 พื้นที่ปลูกแทรกตามช่องว่างป่าเดิมให้ใช้ Skill 00
@@ -25,11 +25,14 @@ description: ควบคุม Workflow แปลงปลูกเต็ม �
 → 01b validate project inputs and provenance
 → 11 raw crown candidates
 → 12 preliminary spacing and pattern blocks
-→ 12b validate count with canopy + spacing + planting points
+→ 12c count touching/merged crowns from image-supported centers
+→ 12b validate final count with canopy + spacing + planting points
 → 13 survival/mortality
 → 14 candidate boundary
 → 15 QA/human review package
 ```
+
+ห้ามข้าม 12c เมื่อมี `touching_crown_cluster`, `merged_planted_canopy_candidate` หรือ `closed_canopy_unresolved`
 
 ห้ามข้าม 12b
 
@@ -40,6 +43,7 @@ description: ควบคุม Workflow แปลงปลูกเต็ม �
 ```text
 12b validated_reference_samples
 → rerun 12
+→ rerun 12c for affected pattern blocks
 → rerun 12b
 ```
 
@@ -47,15 +51,20 @@ description: ควบคุม Workflow แปลงปลูกเต็ม �
 
 ## Core Rules
 
-- จุดแดงจาก 11 เป็น Raw Candidate
+- จุดจาก 11 เป็น Raw Candidate
+- Skill 12 สร้าง Preliminary Spacing/Pattern เท่านั้น
+- Skill 12c ต้องสร้าง Crown Center จาก Canopy Evidence ไม่ใช่ Grid
+- Skill 12b เป็นผู้ตัดสิน Final Class
 - ต้นปลูกต้องมี Canopy Evidence และ Pattern/Spacing Support
 - Grid ห้ามสร้างต้นที่ไม่มีเรือนยอด
+- `grid_created_tree_count` ต้องเป็น 0
 - จุดบนผิวน้ำที่ไม่มีพุ่มเป็น False Positive แต่น้ำไม่ใช่ Exclusion ทั้งหมด
 - จุดบนดิน ถนน คันดิน วัชพืช หรือ Shadow-only ต้องถูกตรวจ
-- เรือนยอดชิดกันใช้ Center, Spacing, Rows และ Planting Points ไม่ใช้ `1 blob = 1 tree`
+- เรือนยอดชิดกันห้ามใช้ `1 blob = 1 tree`
 - ต้นเดิมขนาดใหญ่ไม่นับ ไม่ใช้ Fit Grid และจุดใต้พุ่มเป็น Not Observable
 - แบ่งหลาย Pattern Block เมื่อแนวหรือระยะเปลี่ยน
 - `inferred_grid_position` ไม่ใช่จุดปลูกจริง
+- ภาพละเอียดไม่พอให้รายงาน Unresolved ห้ามบังคับแยก Center
 
 ## Optional Context
 
@@ -88,12 +97,13 @@ Threshold Recommendation ห้ามถูกใช้ Production อัตโ�
 1. Preflight Summary
 2. Raw Detection Preview
 3. Preliminary Spacing/Pattern
-4. 12b False-positive/Large-tree/Merged-canopy Validation
-5. Final Confirmed/Probable/Missing/Not-observable Count
-6. Survival/Mortality
-7. Boundary
-8. QA
-9. Field Plan/Feedback เมื่อเรียกใช้
+4. Touching Crown Centers และ Unresolved Clusters
+5. 12b False-positive/Large-tree/Final Validation
+6. Final Confirmed/Probable/Missing/Not-observable Count
+7. Survival/Mortality
+8. Boundary
+9. QA
+10. Field Plan/Feedback เมื่อเรียกใช้
 
 ## Required Core Outputs
 
@@ -103,6 +113,10 @@ planted_tree_candidates.gpkg
 planting_rows.gpkg
 planting_grid.gpkg
 grid_blocks.gpkg
+touching_crown_centers.gpkg
+touching_crown_clusters_validated.gpkg
+touching_crown_unresolved.gpkg
+touching_crown_metrics.json
 validated_planted_tree_points.gpkg
 planting_point_status.gpkg
 false_positive_detections.gpkg
@@ -122,9 +136,13 @@ review_package/
 หยุดก่อน Survival เมื่อ:
 
 - Preflight ไม่ผ่าน
+- 12c รายงาน `rework` หรือ Metrics ไม่ผ่าน Schema
 - 12b รายงาน `tree_count_validation_failed`
 - Crown Support ต่ำหรือ Random Scatter สูง
 - Grid-only Detection จำนวนมาก
+- `grid_created_tree_count > 0`
+- `center_without_canopy_count > 0`
+- Cluster ถูกข้ามโดยไม่มีสถานะ
 - ต้นใหญ่ถูกใช้ Fit Grid
 - Merged Canopy ถูกบังคับเป็นจำนวนเดียวโดยไม่มีหลักฐาน
 - Grid Refit ครบจำนวนรอบแล้วยังไม่เสถียร
@@ -132,6 +150,7 @@ review_package/
 ## Restrictions
 
 - ห้ามใช้ Raw Detection เป็นจำนวนสุดท้าย
+- ห้ามใช้พื้นที่ Blob ประมาณจำนวนโดยข้าม 12c
 - ห้ามปรับผลให้ตรง Expected Count
 - ห้ามสรุปสาเหตุการตายจากภาพเพียงอย่างเดียว
 - ห้ามเลือกเฉพาะจุดตรวจใกล้ทางเข้า
