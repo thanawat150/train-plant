@@ -1,0 +1,100 @@
+schema_version: 2.0
+config_status: template_requires_project_review
+
+processing:
+  tile_size_px: 2048
+  alternate_tile_size_px: 4096
+  overlap_percent: 15
+  use_overviews: true
+  preserve_source_raster: true
+  max_grid_refit_iterations: 2
+
+preflight:
+  require_project_id: true
+  require_plot_code: true
+  require_projected_crs_for_distance: true
+  require_point_source_class: true
+  allow_image_demo_without_crs: true
+
+raw_detection:
+  require_canopy_evidence: true
+  create_crown_polygon_when_possible: true
+  allow_grid_generated_detection: false
+  deduplicate_tile_overlap: true
+
+spacing_validation:
+  canopy_support_min: null
+  pattern_support_min: null
+  planned_point_match_tolerance_m: null
+  random_scatter_ratio_max: null
+  false_positive_context_ratio_max: null
+  spacing_cv_max: null
+  use_median_and_mad: true
+  allow_multiple_pattern_blocks: true
+  refit_grid_when_reference_contaminated: true
+
+existing_large_tree:
+  size_ratio_to_local_median_candidate: 2.0
+  require_multiple_evidence_types: true
+  exclude_from_count: true
+  exclude_from_grid_fit: true
+  covered_positions_status: not_observable_under_existing_tree
+
+merged_canopy:
+  use_one_blob_one_tree: false
+  allow_spacing_guided_centers: true
+  report_confirmed_and_probable_separately: true
+  report_min_max_when_unresolved: true
+
+survival:
+  exclude_not_observable_from_denominator: true
+  report_confirmed_rate: true
+  report_operational_estimate: true
+  report_estimated_range: true
+  prohibit_raw_detection_input: true
+
+boundary:
+  use_validated_points_only: true
+  use_convex_hull_by_default: false
+  preserve_valid_indentations: true
+  allow_multipolygon: true
+  allow_holes: true
+  smooth_geometry: false
+
+field_inspection:
+  keep_evidence_priority_separate_from_access_burden: true
+  include_high_confidence_qa_controls: true
+  do_not_drop_remote_p1: true
+  use_network_distance: true
+  assess_land_and_boat_separately: true
+
+feedback:
+  require_observer_name: true
+  require_observation_datetime: true
+  require_gps_accuracy: true
+  overwrite_ai_outputs: false
+  preserve_change_log: true
+
+calibration:
+  prevent_spatial_leakage: true
+  require_independent_test_set_for_production_claim: true
+  auto_apply_threshold_recommendations: false
+  report_context_breakdown: true
+
+review:
+  ai_may_approve: false
+  default_status: draft
+  require_human_review: true
+  human_statuses:
+    - reviewed
+    - rejected
+    - approved
+
+outputs:
+  export_gpkg: true
+  export_csv: true
+  export_json: true
+  export_previews: true
+  export_debug_layers: true
+  export_manifest: true
+  export_qa_report: true
