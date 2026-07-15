@@ -1,13 +1,13 @@
 ---
 name: planting-grid-inference
-description: อนุมานแนวแถว ทิศทาง ระยะต้น ระยะแถว และ Planting Pattern Block จากต้นเดี่ยวที่เชื่อถือได้หรือจุดปลูกเดิม เพื่อส่งให้ Skill 21 ตรวจนับต้นในเรือนยอดชิดและกรองจุดฟุ้ง
+description: อนุมานแนวแถว ระยะปลูก และ Planting Pattern Block เบื้องต้นจากต้นเดี่ยวที่เชื่อถือได้หรือจุดปลูกเดิม เพื่อส่งให้ Skill 12b ตรวจจำนวนและขอ Refit เมื่อจำเป็น
 ---
 
 # Planting Grid Inference
 
 ## Scope
 
-สร้างแบบจำลองระยะและแนวปลูกเบื้องต้นจากผล Skill 11 หรือจุดปลูกเดิม ห้ามนับต้นสุดท้าย ห้ามสร้างต้นจากกริดอย่างเดียว และห้ามวงขอบเขตสุดท้าย
+สร้าง Preliminary Spacing/Pattern จากผล Skill 11 หรือจุดปลูกเดิม ห้ามนับต้นสุดท้าย สร้างต้นจากกริด หรือวงขอบเขต
 
 ## Inputs
 
@@ -15,32 +15,42 @@ description: อนุมานแนวแถว ทิศทาง ระย�
 planted_tree_candidates.gpkg
 raw_crown_objects.gpkg
 existing_large_trees.gpkg
+project_manifest.json
 optional planned_planting_points.gpkg
+optional validated_reference_samples.gpkg
 optional AOI
 optional barriers.gpkg
 ```
 
-หากมีจุดปลูกเดิม ให้ใช้เป็น Anchor หลักและตรวจความสอดคล้องกับภาพ
+หากมี `validated_reference_samples.gpkg` จาก Skill 12b ให้ใช้ Refit แทน Reference เดิม
 
-## Reference sample rules
-
-ใช้ Fit Pattern เฉพาะ:
+## Anchor Priority
 
 ```text
-isolated_planted_crown_candidate ที่ confidence สูง
-หรือ planned_planting_points ที่เชื่อถือได้
+surveyed_planting_point
+approved_plan_point
+human_digitized_candidate
+isolated_planted_crown_candidate_high_confidence
+model_inferred_position
 ```
+
+ต้องเก็บ `point_source` และ Reliability แยกกัน
+
+## Reference Sample Rules
+
+ใช้ Fit เฉพาะต้นเดี่ยว High-confidence หรือจุดปลูกที่มี Provenance เชื่อถือได้
 
 ตัดออกก่อน Fit:
 
 - existing large tree
-- merged/touching cluster ที่ยังไม่ทราบศูนย์กลาง
+- merged/touching cluster ที่ยังไม่รู้ศูนย์กลาง
 - palm/coconut
-- จุดบนดิน น้ำ ถนน หรือเงา
+- จุดบนดิน น้ำเปล่า ถนน หรือเงา
 - Low-confidence outlier
-- Detection ซ้ำ
+- Duplicate Detection
+- Random Scatter
 
-## Pattern classes
+## Pattern Classes
 
 ```text
 row_grid_block
@@ -51,24 +61,27 @@ mixed_spacing_block
 unreliable_pattern_zone
 ```
 
-แปลงนากุ้งสามารถเป็น Full-area Block ที่แนวไม่ตรงสมบูรณ์ทั้งแปลงได้ แต่ภายใน Block ต้องมีระยะใกล้เคียงกันและมีต้นจริงรองรับ
+แปลงนากุ้งไม่จำเป็นต้องมีแนวเดียวทั้งแปลง แต่ภายใน Block ต้องมีระยะใกล้เคียงกันและต้นจริงรองรับ
 
-## Method rules
+## Method Rules
 
-1. ตรวจทิศทางหลักด้วย Neighbor Vectors, Hough/RANSAC หรือวิธีที่ทนต่อ Outlier
-2. คำนวณระยะต้นและระยะแถวด้วย Median และ MAD ไม่ใช้ค่าเฉลี่ยอย่างเดียว
-3. คำนวณ Nearest-neighbor distribution และ Local Spacing CV
-4. รองรับหลาย Block เมื่อทิศทาง ระยะ หรือสภาพพื้นที่เปลี่ยน
-5. ขอบ Block ต้องสัมพันธ์กับหลักฐาน เช่น คันบ่อ ร่องน้ำ ถนน หรือการเปลี่ยน Pattern
-6. สร้าง Expected Position เฉพาะภายในบริเวณที่มี Pattern รองรับ
-7. ห้ามขยาย Grid ผ่านคลอง ถนน ขอบภาพ NoData หรือพื้นที่ไม่มีหลักฐาน
-8. ห้ามใช้จุดฟุ้ง Random Scatter เพื่อ Fit Grid
-9. Grid เป็นตำแหน่งคาดหมาย ไม่ใช่หลักฐานว่าต้นรอด
+1. ใช้ Neighbor Vectors, Hough/RANSAC หรือวิธีทน Outlier
+2. ใช้ Median และ MAD สำหรับระยะ
+3. คำนวณ Nearest-neighbor Distribution และ Local Spacing CV
+4. รองรับหลาย Block เมื่อแนว ระยะ หรือสภาพพื้นที่เปลี่ยน
+5. ขอบ Blockสัมพันธ์กับคันบ่อ ร่องน้ำ ถนน หรือ Pattern Change
+6. สร้าง Expected Position เฉพาะบริเวณที่มี Pattern Support
+7. ห้ามขยาย Grid ผ่านคลอง ถนน NoData หรือพื้นที่ไม่มีหลักฐาน
+8. Grid เป็นตำแหน่งคาดหมาย ไม่ใช่หลักฐานว่าต้นรอด
+9. Refit ได้สูงสุดตาม `processing.max_grid_refit_iterations`
+10. ทุก Refit ต้องเพิ่ม `grid_model_version` และเก็บ Parent Version
 
-## Required metrics
+## Required Metrics
 
 ```text
 grid_block_id
+grid_model_version
+parent_grid_model_version
 pattern_class
 row_orientation_deg
 cross_row_orientation_deg
@@ -78,14 +91,13 @@ spacing_mad_m
 spacing_cv
 spacing_consistency
 reference_tree_count
-observed_tree_count
 expected_position_count
 row_coverage_ratio
 pattern_support_ratio
 confidence
 ```
 
-## Candidate position classes
+## Candidate Position Classes
 
 ```text
 observed_reference_position
@@ -95,7 +107,7 @@ uncertain_expected_position
 not_evaluated
 ```
 
-Skill นี้ยังไม่ตัดสิน `surviving` หรือ `missing` สุดท้าย การตัดสินต้องทำใน Skill 21 โดยตรวจ Canopy Support
+Skill นี้ยังไม่ตัดสิน Surviving/Missing สุดท้าย
 
 ## Outputs
 
@@ -111,14 +123,16 @@ grid_missing_preview.png
 
 ## QA
 
-- แจ้งเตือนเมื่อ Fit ด้วย Reference Trees น้อยเกินไป
-- แจ้งเตือนเมื่อมีหลายทิศทางแต่ระบบสร้าง Grid เดียว
-- แจ้งเตือนเมื่อ Grid ข้าม Barrier
-- แจ้งเตือนเมื่อ Random Scatter ถูกใช้เป็น Reference
-- แจ้งเตือนเมื่อ Spacing CV สูงเกิน Config
-- ห้ามสร้าง Expected Position ในพื้นที่ที่ไม่มี Pattern Coverage
-- ห้ามเรียก Expected Position ว่าต้นจริงหรือต้นตายก่อน Skill 21
+- Reference Trees น้อยเกินไป
+- หลายทิศทางแต่สร้าง Grid เดียว
+- Grid ข้าม Barrier
+- Random Scatter ถูกใช้เป็น Reference
+- Spacing CV สูงเกิน Config
+- Expected Position อยู่นอก Pattern Coverage
+- Refit เกินจำนวนรอบ
 
 ## Downstream
 
-ส่ง Pattern Blocks, Rows, Grid และ Expected Positions ให้ Skill 21 ตรวจร่วมกับเรือนยอดจริง จุดปลูกเดิม น้ำ ดิน และต้นใหญ่ ก่อนส่งผลให้ Skill 13
+ส่งผลให้ Skill 12b ตรวจร่วมกับ Canopy, Planned Points, Surface และต้นใหญ่
+
+หาก Skill 12b ส่ง `grid_refit_required=true` ให้ Refit ด้วย Validated Reference แล้วส่งกลับ 12b ห้ามส่งต่อ Skill 13 ก่อน Validation ผ่าน
