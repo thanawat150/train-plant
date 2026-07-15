@@ -1,50 +1,59 @@
 ---
 name: nypa-palm-detector
-description: ตรวจและแยกต้นจาก (Nypa palm) ออกจากโกงกางเป้าหมายด้วยรูปทรงใบแบบรัศมี ใบยาว Texture และบริบทพื้นที่ชุ่มน้ำ ใช้ลด False Positive ในงานปลูกเสริม
+description: ตรวจและแยกต้นจาก (Nypa palm) ที่ขึ้นเป็นกอหรือผืนในพื้นที่ชุ่มน้ำ ออกจากโกงกาง ปาล์ม และมะพร้าว ใช้ลด False Positive ในงานปลูกเสริม
 ---
 
 # Nypa Palm Detector
 
 ## หน้าที่
 
-ตรวจ `nypa_palm` เป็นรายพุ่มหรือรายกลุ่ม เพื่อใช้เป็น Exclusion Class ไม่สร้างขอบเขตปลูกเสริมและไม่เหมารวมพืชวงศ์ปาล์มชนิดอื่น
+ตรวจต้นจากเป็นรายกอหรือรายผืน เพื่อใช้เป็น Exclusion/Mixed Class ไม่สร้างขอบเขตปลูกเสริม และไม่เหมารวมพืชวงศ์ปาล์มชนิดอื่น
 
 ## Visual Evidence
 
-จากตัวอย่างของผู้ใช้ ต้นจากมักมี:
+จากตัวอย่างที่ผู้ใช้ยืนยัน ต้นจากมักมี:
 
-- ใบยาวแผ่ออกจากศูนย์กลางเป็นรัศมี
-- รูปทรงคล้ายพัด ดาว หรือ Rosette
-- สีเขียว เหลือง และน้ำตาลปะปนในพุ่มเดียว
-- Texture เป็นเส้นยาวต่างจากพุ่มโกงกางแบบก้อน
-- เกิดเป็นกลุ่มในพื้นที่ชุ่มน้ำ ใกล้คลองหรือเลน
+- ขึ้นรวมกันเป็นกอหรือผืนหนาแน่นต่อเนื่อง
+- ใบยาวแบบขนนกแตกจากระดับพื้นหรือเลน
+- หลายกอซ้อนกันจนศูนย์กลางเรือนยอดไม่ชัด
+- ไม่เห็นลำต้นตั้งตรงเด่นจากมุมบน
+- มีใบเขียว เหลือง และใบแห้งสีน้ำตาลปะปน
+- Texture เป็นเส้นใบยาวและซ้อนทับกันมาก
+- สัมพันธ์กับเลน คลอง น้ำกร่อย หรือพื้นที่ชุ่มน้ำ
+
+ต้นเดี่ยวทรงดาวที่มีศูนย์กลางชัด ลำต้นหรือเงาลำต้น ต้องส่งให้ `17-palm-coconut-detector` ไม่ควรเรียกเป็นต้นจากอัตโนมัติ
 
 ## Classes
 
 ```text
 nypa_palm
 probable_nypa_palm
-mixed_nypa_and_other_canopy
-unknown_radial_crown
+nypa_dense_patch
+nypa_mixed_patch
+unknown_nypa_like_patch
 ```
 
 ## Rules
 
-1. ใช้ Shape และ Radial Texture เป็นหลัก สีเป็นข้อมูลเสริม
+1. ใช้การขึ้นเป็นกอ ความต่อเนื่องของผืน Long-frond Texture และ Wetland Context ร่วมกัน
 2. ห้ามเรียกต้นจากว่าโกงกาง แม้มีสีเขียวเข้ม
-3. ห้ามเรียกทุก Crown แบบรัศมีว่า Nypa หากบริบทไม่สอดคล้อง
-4. พุ่มซ้อนกับต้นไม้เดิมให้ใช้ `mixed_nypa_and_other_canopy`
-5. กลุ่มที่แยกชนิดไม่ได้ให้ใช้ `unknown_radial_crown`
-6. รักษา Geometry และ Source Tile เพื่อป้องกันการนับซ้ำ
+3. ห้ามเรียกทุก Crown แบบรัศมีว่า Nypa
+4. ต้นเดี่ยวที่มี Crown Center ชัดให้ Route ไป Skill 17
+5. พุ่มซ้อนกับต้นไม้เดิมให้ใช้ `nypa_mixed_patch`
+6. กลุ่มที่แยกชนิดไม่ได้ให้ใช้ `unknown_nypa_like_patch`
+7. รักษา Geometry, Source Tile และ Overlap Provenance
+8. ห้ามยืนยันชนิดพฤกษศาสตร์จากสีอย่างเดียว
 
 ## Detection Features
 
-- Radial symmetry
-- Long-frond orientation
-- Center-to-edge line response
-- Crown aspect and compactness
-- Color distribution ภายใน Crown
+- Patch continuity
+- Multiple overlapping frond centers
+- Long-frond orientation and line response
+- Weak or multiple crown centers
+- Absence of a visible upright trunk
+- Color distribution ภายในกอ
 - Proximity to water, mudflat หรือ tidal channel
+- Surface context จาก Skill 16 เมื่อมี
 
 ## Outputs
 
@@ -53,12 +62,29 @@ unknown_radial_crown
 - `nypa_confidence.tif`
 - `nypa_preview.png`
 
+## Required Attributes
+
+```text
+object_id
+class
+confidence
+patch_area_sqm
+center_count
+patch_continuity
+trunk_visible
+wetland_context_score
+source_tile
+source_raster
+review_status
+```
+
 ## QA
 
-- ตรวจสับสนกับมะพร้าว ปาล์มชนิดอื่น และเรือนยอดแห้ง
-- ตรวจพุ่มจากที่ใบซ้อนกันหลายต้น
-- ตรวจ False Positive จากเส้นกิ่งหรือ Orthomosaic artifact
+- ตรวจสับสนกับมะพร้าวและปาล์มชนิดอื่นด้วย Skill 17
+- ตรวจพุ่มจากที่ใบซ้อนกันหลายกอ
+- ตรวจ False Positive จากกิ่งแห้ง เงา และ Orthomosaic Artifact
 - รายงานจำนวนและพื้นที่ Nypa ภายใน Candidate Enrichment Gap
+- Flag ต้นเดี่ยวทรงดาวเป็น `possible_other_palm`
 
 ## Downstream Use
 
