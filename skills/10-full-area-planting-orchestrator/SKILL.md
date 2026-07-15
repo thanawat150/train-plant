@@ -23,9 +23,9 @@ description: ควบคุม Workflow วิเคราะห์แปลง
 3. Skill นี้
 4. Skill ขั้นตอนที่กำลังรันเพียงตัวเดียว
 
-ห้ามอ่าน Skill 02–09 ทั้งหมด เว้นแต่งานร้องขอโดยตรง
+ห้ามอ่าน Skill ปลูกเสริมทั้งหมด เว้นแต่งานร้องขอ Classifier เฉพาะ และห้ามอ่าน Skill 16/17 หากภาพไม่มี Trigger
 
-## Pipeline
+## Core Pipeline
 
 ```text
 Skill 01: inspect and tile large raster
@@ -36,6 +36,12 @@ Skill 01: inspect and tile large raster
 → Skill 15: QA and human review
 ```
 
+## Optional Context
+
+- เรียก Skill 16 เมื่อพื้นที่มีดิน เลน น้ำขัง ร่องน้ำ หรือ Surface Zone ต่างกันชัด และต้องการเปรียบเทียบกับ Survival/Mortality
+- เรียก Skill 17 เมื่อมีต้นเดี่ยวทรงรัศมีที่อาจปะปนกับต้นปลูก
+- Optional Skill ใช้เป็น Context/Exclusion ไม่ใช้แทนหลักฐาน Grid
+
 ## Checkpoints
 
 หยุดให้ตรวจหลัง:
@@ -43,7 +49,8 @@ Skill 01: inspect and tile large raster
 1. Tree Detection Preview
 2. Grid and Missing-position Preview
 3. Survival/Mortality Preview
-4. Candidate Boundary Preview
+4. Optional Surface/Palm Preview เมื่อเรียกใช้
+5. Candidate Boundary Preview
 
 ## Required outputs
 
@@ -60,10 +67,19 @@ qa_report.json
 review_package/
 ```
 
+Optional:
+
+```text
+surface_condition.tif
+hydrology_features.gpkg
+palm_coconut_candidates.gpkg
+```
+
 ## Restrictions
 
 - ห้ามตีความเงาเป็นต้น
-- ห้ามให้ต้นเดิมขนาดใหญ่บิดระยะกริด
+- ห้ามให้ต้นเดิมหรือปาล์ม/มะพร้าวขนาดใหญ่บิดระยะกริด
 - ห้ามตัดพื้นที่ออกเพียงเพราะต้นตาย หากกริดยังต่อเนื่อง
 - ห้ามใช้สีพื้นน้ำหรือเลนเป็นแนวแบ่งโดยอัตโนมัติ
+- ห้ามสรุปสาเหตุการตายจาก Surface Class เพียงอย่างเดียว
 - ห้ามตั้งสถานะ `approved`
