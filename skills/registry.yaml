@@ -4,7 +4,7 @@ repository: train-plant
 routing:
   production_preflight: ["01", "01b"]
   enrichment_core: ["01", "01b", "02", "03", "04", "05", "06", "07", "08", "09"]
-  full_area_core: ["01", "01b", "11", "12", "12b", "13", "14", "15"]
+  full_area_core: ["01", "01b", "11", "12", "12c", "12b", "13", "14", "15"]
   field_plan: ["18", "19", "20"]
   feedback_loop: ["21", "22"]
 
@@ -105,12 +105,19 @@ skills:
     path: skills/12-planting-grid-inference/SKILL.md
     depends_on: ["11"]
 
+  - id: "12c"
+    name: touching-crown-tree-counter
+    stage: touching_crown_count
+    workflow: full_area
+    path: skills/12c-touching-crown-tree-counter/SKILL.md
+    depends_on: ["11", "12"]
+
   - id: "12b"
     name: spacing-guided-tree-count-validator
     stage: count_validation
     workflow: full_area
     path: skills/12b-spacing-guided-tree-count-validator/SKILL.md
-    depends_on: ["11", "12"]
+    depends_on: ["11", "12", "12c"]
 
   - id: "13"
     name: full-area-mortality-analyzer
@@ -131,7 +138,7 @@ skills:
     stage: qa
     workflow: full_area
     path: skills/15-full-area-qa-human-review/SKILL.md
-    depends_on: ["11", "12", "12b", "13", "14"]
+    depends_on: ["11", "12", "12c", "12b", "13", "14"]
 
   - id: "16"
     name: surface-hydrology-condition-classifier
