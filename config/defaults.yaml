@@ -1,4 +1,4 @@
-schema_version: 2.0
+schema_version: 2.1
 config_status: template_requires_project_review
 
 processing:
@@ -45,6 +45,28 @@ merged_canopy:
   allow_spacing_guided_centers: true
   report_confirmed_and_probable_separately: true
   report_min_max_when_unresolved: true
+
+touching_crown:
+  enabled: true
+  require_image_supported_center: true
+  allow_grid_seeded_center: false
+  min_peak_distance_ratio: null
+  max_peak_distance_ratio: null
+  minimum_resolvable_crown_diameter_px: null
+  minimum_center_separation_px: null
+  canopy_support_min: null
+  crown_center_score_min: null
+  row_angle_tolerance_deg: null
+  spacing_residual_tolerance_m: null
+  surface_ring_inner_ratio_to_crown_radius: null
+  surface_ring_outer_ratio_to_local_spacing: null
+  require_cross_row_support_for_confirmed: true
+  require_two_evidence_types_for_road_dike_conflict: true
+  require_all_clusters_processed: true
+  require_zero_grid_created_trees: true
+  require_zero_centers_without_canopy: true
+  report_min_max_when_unresolved: true
+  schema_path: schemas/touching_crown_metrics.schema.json
 
 survival:
   exclude_not_observable_from_denominator: true
