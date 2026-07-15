@@ -1,24 +1,29 @@
 ---
 name: full-area-boundary-delineator
-description: สร้าง Candidate Boundary ของแปลงปลูกเต็มพื้นที่จากต้นปลูก กริด แนวแถว และช่องว่างต้นตาย โดยรักษาพื้นที่ที่กริดยังต่อเนื่อง
+description: สร้าง Candidate Boundary ของแปลงปลูกเต็มพื้นที่จากต้นที่ผ่าน Skill 21 แนวแถว Pattern Blocks และโซนอัตรารอด โดยรักษาพื้นที่ที่รูปแบบปลูกยังต่อเนื่อง
 ---
 
 # Full-area Planting Boundary Delineator
 
 ## Scope
 
-สร้าง Polygon หลังจาก Skill 11–13 มีผลแล้ว ห้ามตรวจต้นหรือ Fit Grid ใหม่ในขั้นตอนนี้
+สร้าง Polygon หลังจาก Skill 12, 21 และ 13 มีผลแล้ว ห้ามตรวจต้น Fit Grid หรือแก้จำนวนต้นใหม่ในขั้นตอนนี้
 
 ## Inputs
 
 ```text
-planted_tree_candidates.gpkg
+validated_planted_tree_points.gpkg
+planting_point_status.gpkg
 planting_rows.gpkg
 planting_grid.gpkg
-expected_missing_positions.gpkg
+grid_blocks.gpkg
+planting_pattern_blocks.gpkg
 survival_mortality_zones.gpkg
+existing_large_trees_validated.gpkg
 optional barrier layers
 ```
+
+ห้ามใช้ Raw Detection จาก Skill 11 เป็นหลักฐานขอบเขตโดยตรง
 
 ## Boundary outputs
 
@@ -32,26 +37,29 @@ boundary_segment_confidence
 
 ## Rules
 
-- `core` ครอบบริเวณที่พบต้นและ Grid ชัด
-- `evidence_boundary` รวม Sparse Survival และ Mortality Gap เมื่อ Grid ต่อเนื่อง
-- ตามแนว Grid หรือแถวปลูกด้านนอกสุดที่มีหลักฐานรองรับ
+- `core` ครอบบริเวณที่มีต้น Validated และ Pattern/Spacing ชัด
+- `evidence_boundary` รวม Sparse Survival และ Mortality Gap เมื่อ Pattern Block ยังต่อเนื่อง
+- ตามแนวแถวหรือ Pattern Block ด้านนอกสุดที่มีหลักฐานรองรับ
+- False Positive, Existing Large Tree และ Random Scatter Zone ห้ามขยายขอบเขต
+- จุด `off_grid_tree_candidate` ไม่ใช้ขยาย Boundary จนกว่าจะ Review
+- จุดใต้ต้นใหญ่ที่เป็น Not Observable ไม่ได้ทำให้เกิดช่องเว้าหรือตัดพื้นที่โดยอัตโนมัติ
 - สีพื้นน้ำ เลน และความชื้นไม่ใช่ขอบเขตอัตโนมัติ
-- คลอง ถนน คันดิน และ AOI เป็น Candidate Barrier ต้องตรวจร่วมกับ Grid
-- รักษารอยเว้าที่มีสิ่งกีดขวางจริง
-- แยกหลาย Grid Block เมื่อไม่ต่อเนื่อง
+- คลอง ถนน คันดิน และ AOI เป็น Candidate Barrier ต้องตรวจร่วมกับ Pattern
+- แยกหลาย Pattern Block เมื่อไม่ต่อเนื่อง
 - ห้ามใช้ Convex Hull เป็นค่าเริ่มต้น
-- ห้าม Smooth จนเส้นเคลื่อนออกจากแถวปลูกด้านนอก
+- ห้าม Smooth จนเส้นเคลื่อนออกจากแนวปลูกด้านนอก
 
 ## Segment confidence
-
-แบ่งแนวขอบเป็น Segment และเก็บ:
 
 ```text
 segment_id
 boundary_type
 confidence
 support_type
-outer_row_distance_m
+outer_pattern_distance_m
+validated_tree_support_count
+spacing_supported_count
+false_positive_near_edge_count
 barrier_type
 requires_review
 review_note
@@ -70,8 +78,10 @@ full_area_boundary_preview.png
 
 ## QA precheck
 
-- ขอบเขตห่างจากแถวนอกสุดผิดปกติหรือไม่
-- ต้นที่สัมพันธ์กับ Grid หลักตกอยู่นอก Polygon มากหรือไม่
-- Polygon ครอบพื้นที่ที่ไม่มี Grid รองรับมากหรือไม่
+- ขอบเขตห่างจากแนวนอกสุดผิดปกติหรือไม่
+- ต้น Validated ที่สัมพันธ์กับ Pattern หลักตกอยู่นอก Polygon มากหรือไม่
+- Polygon ครอบ Random Scatter หรือ False-positive Zone หรือไม่
+- ต้นใหญ่เดิมทำให้ Boundary พองออกหรือไม่
+- Polygon ครอบพื้นที่ที่ไม่มี Pattern รองรับมากหรือไม่
 - เส้นเกาะ Tile Edge หรือไม่
 - Geometry valid หรือไม่
