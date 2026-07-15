@@ -4,7 +4,7 @@
 
 ควบคุม Workflow วิเคราะห์แปลงปลูกเสริมและแปลงปลูกเต็มพื้นที่จาก Orthomosaic ขนาดใหญ่
 
-ผลลัพธ์เป็น Candidate Evidence ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย
+ผลลัพธ์เป็น Candidate Evidence ต้องผ่าน Human Review ไม่ใช่ขอบเขตตามกฎหมาย และภาพไม่ยืนยันคุณสมบัติดินทางห้องปฏิบัติการ
 
 ## Mandatory token routing
 
@@ -17,7 +17,7 @@
 3. Orchestrator หรือ Skill ที่ผู้ใช้เรียก
 4. Skill ก่อนหน้าเฉพาะ Output Contract เมื่อจำเป็น
 
-เมื่อจบแต่ละขั้น ให้สรุป Output Path, Schema และ Warning แบบสั้น แล้วเริ่ม Session/Prompt ถัดไปด้วยไฟล์ผลลัพธ์แทนการส่งบริบทเดิมทั้งหมด
+เมื่อจบแต่ละขั้น ให้สรุป Output Path, Schema และ Warning แบบสั้น แล้วเริ่มขั้นถัดไปด้วยไฟล์ผลลัพธ์แทนการส่งบริบทเดิมทั้งหมด
 
 ## Choose one workflow
 
@@ -39,6 +39,26 @@
 
 ห้ามผสมกฎของสอง Workflow โดยไม่มีเหตุผล
 
+## Optional shared skills
+
+### Skill 16 — Surface/Hydrology
+
+เรียกเมื่อภาพมีดิน เลน น้ำขัง แอ่งน้ำ ร่องน้ำ หรือ Surface Zone ต่างกันชัด
+
+- ใช้ Class ที่มองเห็นจากภาพเท่านั้น
+- `possible_salt_crust` ไม่ใช่ผลยืนยันดินเค็ม
+- ห้ามสรุป pH, EC, Acid Sulfate Soil หรือความเหมาะสมปลูกจากสีภาพ
+
+### Skill 17 — Palm/Coconut
+
+เรียกเมื่อตรวจพบต้นเดี่ยวทรงดาวหรือรัศมี มี Crown Center ชัด หรืออาจเห็นลำต้น/เงาลำต้น
+
+- ต้นจากมักเป็นกอหรือผืน ใบหลายกอซ้อน ศูนย์กลางไม่ชัด และไม่มีลำต้นเด่น
+- ห้ามเรียกทุก Crown แบบรัศมีว่า `nypa_palm`
+- เมื่อแยกชนิดไม่ได้ให้ใช้ `palm_unknown`
+
+Optional Skill ต้องไม่ถูกอ่านเมื่อไม่มี Trigger
+
 ## Shared raster rules
 
 - งานจริงต้องอ่าน GeoTIFF, COG หรือ VRT ที่มี CRS และ Affine Transform
@@ -59,13 +79,21 @@ Skill 01: inspect and tile
 → Skill 15: QA and human review
 ```
 
+Optional:
+
+```text
+Skill 16: surface/hydrology context
+Skill 17: palm/coconut exclusion
+```
+
 กฎสำคัญ:
 
-- แยกเงาและต้นเดิมขนาดใหญ่ออกจากต้นปลูก
+- แยกเงา ต้นเดิม และปาล์ม/มะพร้าวออกจากต้นปลูก
 - ตำแหน่งต้นหายต้องมี Grid รองรับ
 - `not_observable` ไม่ใช่ต้นตาย
 - พื้นที่ต้นรอดต่ำยังอยู่ในขอบเขตได้เมื่อ Grid ต่อเนื่อง
 - สีพื้นน้ำหรือเลนไม่ใช่แนวแบ่งอัตโนมัติ
+- Surface Class ใช้เปรียบเทียบกับอัตรารอดได้ แต่ห้ามสรุปสาเหตุโดยอัตโนมัติ
 
 ## Enrichment pipeline
 
@@ -74,20 +102,28 @@ Skill 01: inspect and tile
 → Skill 02: land-cover classification
 → Skill 03: Rhizophora candidates
 → Skill 04: weed and obstruction
-→ Skill 05: Nypa palm
+→ Skill 05: Nypa patch detection
 → Skill 06: existing canopy and occlusion
 → Skill 07: enrichment gaps
 → Skill 08: candidate boundary
 → Skill 09: QA and human review
 ```
 
+Optional routing:
+
+```text
+หลัง Skill 02 → Skill 16 เมื่อมี Surface/Hydrology Trigger
+หลัง Skill 05 → Skill 17 เมื่อมี Single Radial Crown Trigger
+```
+
 กฎสำคัญ:
 
 - ห้ามใช้สีเพียงอย่างเดียว
-- แยกวัชพืช ต้นจาก ป่าเดิม น้ำ เลน เงา และเรือนยอดปิด
+- แยกวัชพืช ต้นจาก ปาล์ม/มะพร้าว ป่าเดิม น้ำ เลน เงา และเรือนยอดปิด
 - `closed_canopy_unknown` ไม่ใช่ `not_planted`
 - วิเคราะห์แบบ Gap-by-gap ไม่บังคับ Grid
 - ภาพช่วงเวลาเดียวไม่ยืนยันว่าต้นเกิดจากการปลูก
+- Surface Class ไม่ใช่ผลตรวจดิน
 
 ## Required checkpoints
 
@@ -96,14 +132,16 @@ Skill 01: inspect and tile
 1. Tree Detection Preview
 2. Grid and Missing-position Preview
 3. Survival/Mortality Preview
-4. Candidate Boundary Preview
+4. Optional Surface/Palm Preview เมื่อเรียกใช้
+5. Candidate Boundary Preview
 
 ### Enrichment
 
 1. Classification Preview
-2. Target vs Weed vs Nypa Preview
-3. Gap Classification Preview
-4. Candidate Boundary Preview
+2. Optional Surface Preview
+3. Target vs Weed vs Nypa vs Other Palm Preview
+4. Gap Classification Preview
+5. Candidate Boundary Preview
 
 ห้ามข้าม Checkpoint โดยไม่แสดงผลหรือรายงานเหตุผล
 
