@@ -1,13 +1,13 @@
 ---
 name: enrichment-gap-analyzer
-description: วิเคราะห์ช่องว่างในป่าเดิมแบบ Gap-by-gap เพื่อหาพื้นที่ที่มีหลักฐานปลูกเสริมจากโกงกางเป้าหมาย พร้อมแยกวัชพืช จาก ป่าเดิม น้ำ เลน เงา และพื้นที่ไม่มั่นใจ ใช้ก่อนสร้างขอบเขต
+description: วิเคราะห์ช่องว่างในป่าเดิมแบบ Gap-by-gap เพื่อหาพื้นที่ที่มีหลักฐานปลูกเสริมจากโกงกางเป้าหมาย พร้อมแยกวัชพืช จาก ปาล์ม/มะพร้าว ป่าเดิม น้ำ เลน เงา และพื้นที่ไม่มั่นใจ ใช้ก่อนสร้างขอบเขต
 ---
 
 # Enrichment Gap Analyzer
 
 ## หน้าที่
 
-รวมผลจาก Detection และ Classification เพื่อประเมินช่องว่างแต่ละแห่ง ไม่สร้าง Polygon ขอบเขตสุดท้ายและไม่ยืนยันว่าโกงกางเกิดจากการปลูก
+รวมผลจาก Detection และ Classification เพื่อประเมินช่องว่างแต่ละแห่ง ไม่สร้าง Polygon ขอบเขตสุดท้าย ไม่ยืนยันว่าโกงกางเกิดจากการปลูก และไม่สรุปคุณภาพดินจากสีภาพ
 
 ## Gap Classes
 
@@ -17,6 +17,7 @@ probable_enrichment_gap
 uncertain_enrichment_gap
 natural_regeneration_gap
 disturbed_open_area
+waterlogged_open_area
 closed_canopy_unknown_gap
 excluded_water_gap
 ```
@@ -34,7 +35,8 @@ excluded_water_gap
 - การกระจายภายในช่องว่างของป่าเดิม
 - ระยะระหว่างพุ่มหรือกลุ่มที่สัมพันธ์กัน
 - ภาพก่อน–หลัง จุดปลูก หรือข้อมูลภาคสนาม
-- สัดส่วนวัชพืช จาก ป่าเดิม น้ำ และพื้นที่บดบัง
+- สัดส่วนวัชพืช ต้นจาก ปาล์ม/มะพร้าว ป่าเดิม น้ำ และพื้นที่บดบัง
+- สภาพผิวและน้ำจาก Skill 16 เมื่อมี
 
 ## Rules
 
@@ -42,9 +44,12 @@ excluded_water_gap
 2. พื้นที่มี Target ชัดและสิ่งรบกวนน้อยให้เป็น `confirmed_enrichment_gap` เฉพาะเมื่อมี Supporting Evidence เพียงพอ
 3. พบ Target หลายต้นแต่ยังแยกจาก Natural Regeneration ไม่ได้ให้เป็น `probable_enrichment_gap`
 4. วัชพืชหนาแน่น เงา หรือเรือนยอดปิดให้เป็น `uncertain_enrichment_gap`
-5. จากและพืชธรรมชาติไม่ใช่ Target แต่สามารถอยู่ร่วมใน Gap เดียวกันได้
+5. ต้นจาก ปาล์ม/มะพร้าว และพืชธรรมชาติไม่ใช่ Target แต่สามารถอยู่ร่วมใน Gap เดียวกันได้
 6. น้ำหรือคลองต้องตัดเป็น Exclusion เว้นแต่ต้นเป้าหมายเกิดอยู่ในพื้นที่เลนที่มีน้ำตื้นและเห็นได้จริง
-7. ห้ามรวม Gap ที่ถูกคลองหรือป่าเดิมหนาแน่นแบ่งออกเพียงเพราะอยู่ใกล้กัน
+7. แอ่งน้ำหรือพื้นน้ำขังที่ยังไม่มี Target ให้เป็น `waterlogged_open_area`
+8. ห้ามรวม Gap ที่ถูกคลองหรือป่าเดิมหนาแน่นแบ่งออกเพียงเพราะอยู่ใกล้กัน
+9. `possible_salt_crust` เป็นเพียง Surface Warning ไม่ใช่เหตุผลยืนยันว่าไม่เหมาะปลูก
+10. ความสัมพันธ์ระหว่าง Surface Class กับความหนาแน่นต้นต้องรายงานเป็น Correlation Context ไม่ใช่สาเหตุ
 
 ## Required Metrics per Gap
 
@@ -55,10 +60,17 @@ target_count
 target_density_per_rai
 weed_ratio
 nypa_ratio
+other_palm_ratio
 existing_canopy_ratio
 closed_canopy_unknown_ratio
 water_ratio
+shallow_water_ratio
+waterlogged_ratio
+wet_mud_ratio
 bare_mud_ratio
+dry_pale_mud_ratio
+disturbed_surface_ratio
+possible_salt_crust_ratio
 target_confidence_mean
 supporting_evidence_count
 gap_confidence
@@ -78,4 +90,7 @@ review_status
 - ตรวจ Gap ที่ Target กระจายเฉพาะขอบ
 - ตรวจการรวม Natural Regeneration เป็นการปลูก
 - ตรวจพื้นที่ที่ถูกวัชพืชหรือเรือนยอดปิดบดบัง
+- ตรวจ Nypa และ Palm/Coconut Inclusion
+- ตรวจ Water vs Shadow Confusion
+- ตรวจการใช้ Surface Class เป็นข้อสรุปเกินหลักฐาน
 - ต้องแสดงเหตุผลของ Class แต่ละ Gap
