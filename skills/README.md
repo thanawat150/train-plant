@@ -32,11 +32,37 @@
 | Skill | หน้าที่ |
 |---|---|
 | `10-full-area-planting-orchestrator` | เรียก Workflow ปลูกเต็มทั้งชุด |
-| `11-full-area-tree-detector` | ตรวจต้นปลูกเป็นรายพุ่ม แยกเงาและต้นเดิม |
-| `12-planting-grid-inference` | หาแถว กริด ระยะปลูก และตำแหน่งต้นหาย |
-| `13-full-area-mortality-analyzer` | วิเคราะห์อัตรารอด ต้นหาย และพื้นที่ตรวจไม่ได้ |
+| `11-full-area-tree-detector` | สร้าง Raw Crown/Tree Candidates จากภาพจริง ยังไม่ใช่จำนวนสุดท้าย |
+| `12-planting-grid-inference` | หา Reference Spacing, แนวแถว, Grid และ Planting Pattern Block เบื้องต้น |
+| `21-spacing-guided-tree-count-validator` | กรองจุดฟุ้ง ตัดต้นใหญ่/จุดบนดินน้ำ และนับเรือนยอดชิดด้วย Canopy+Spacing |
+| `13-full-area-mortality-analyzer` | วิเคราะห์อัตรารอดจากผล Skill 21 เท่านั้น |
 | `14-full-area-boundary-delineator` | สร้าง Core, Evidence Boundary และ Uncertain Edge |
 | `15-full-area-qa-human-review` | QA และชุด Human Review สำหรับปลูกเต็ม |
+
+## Full-area core pipeline
+
+```text
+01 อ่านภาพ/แบ่ง Tile
+→ 11 Raw Crown Detection
+→ 12 Reference Spacing และ Pattern Blocks
+→ 21 Validate Count ด้วย Canopy + Spacing + จุดปลูก
+→ 13 Survival/Mortality
+→ 14 Boundary
+→ 15 QA
+```
+
+ห้ามข้าม Skill 21 แล้วนำ Raw Detection จาก Skill 11 ไปคำนวณอัตรารอด
+
+## ความเข้าใจสำหรับ Skill 21
+
+- จุดแดงเป็น Raw Candidate ไม่ใช่จำนวนต้นสุดท้าย
+- ต้นปลูกต้องมีเรือนยอดรองรับและสอดคล้องกับระยะ/แนว/จุดปลูก
+- จุดฟุ้งบนดิน น้ำ ถนน วัชพืช หรือเงาต้องถูก Flag เป็น False Positive
+- น้ำไม่ใช่ Exclusion ทั้งหมด เพราะต้นป่าชายเลนสามารถมีเรือนยอดอยู่เหนือผิวน้ำ
+- เรือนยอดชิดกันนับจาก Center Spacing และ Pattern ไม่ใช้ `1 blob = 1 tree`
+- ต้นเดิมขนาดใหญ่ไม่นับ ไม่ใช้ Fit Grid และจุดใต้พุ่มใหญ่เป็น Not Observable
+- แปลงนากุ้งรองรับ `shrimp_pond_planting_block` ที่ระยะสม่ำเสมอเฉพาะภายใน Block
+- Grid ห้ามสร้างต้นรอดขึ้นมาเองเมื่อไม่มี Canopy Evidence
 
 # Field Inspection Planning
 
@@ -55,9 +81,7 @@ Analysis/QA Outputs
 - `access_burden_score` = จุดนี้เข้าถึงยากเพียงใด
 - ห้ามรวมสองคะแนนจนจุดสำคัญแต่ไกลหายออกจากแผน
 - จุดสำคัญและไกลให้เป็น `special_mission` หรือ `remote_cluster_mission`
-- จุดไกลหลายจุดควรรวมเป็นเที่ยวเดียวเมื่อคุ้มค่า
 - ระยะเข้าถึงต้องใช้ Network Distance ไม่ใช่เส้นตรง
-- Route ทางบกและทางเรือต้องประเมินแยก
 - Route จากภาพเป็น Candidate ต้องให้ทีมพื้นที่ยืนยัน
 
 # Token-efficient load sets
@@ -65,18 +89,18 @@ Analysis/QA Outputs
 | งาน | อ่านเต็ม | อ่านเฉพาะ Output Contract |
 |---|---|---|
 | อ่านภาพ/แบ่ง Tile | 01 | ไม่มี |
+| Raw Crown Detection | 11 | 01 และ 16/17 เมื่อใช้ |
+| หา Reference Spacing/Grid | 12 | 11 |
+| ตรวจนับต้นจริง/เรือนยอดชิด | 21 | 11, 12 และ 16 เมื่อใช้ |
+| วิเคราะห์อัตรารอด | 13 | 21, 12 และ 16 เมื่อใช้ Surface Context |
+| วงขอบเขตปลูกเต็ม | 14 | 12, 13, 21 และ Optional Context |
+| QA ปลูกเต็ม | 15 | 11–14, 21 และ Optional Outputs |
 | จำแนก Surface/Hydrology | 16 | 01 |
 | แยก Palm/Coconut | 17 | 01, 02 หรือ 05 ตาม Input |
-| นับต้นปลูกเต็ม | 01, 11 | ไม่มี |
-| หา Grid | 12 | 11 |
-| วิเคราะห์อัตรารอด | 13 | 11, 12 และ 16 เมื่อใช้ Surface Context |
-| วงขอบเขตปลูกเต็ม | 14 | 11, 12, 13 และ 16/17 เมื่อเรียกใช้ |
-| QA ปลูกเต็ม | 15 | 11–14 และ Optional Outputs |
 | จำแนกสิ่งปกคลุมปลูกเสริม | 01, 02 | ไม่มี |
 | หาโกงกางในปลูกเสริม | 03 | 01, 02 |
 | แยกวัชพืช | 04 | 01, 02 |
 | แยกต้นจาก | 05 | 01, 02 |
-| แยกต้นจาก vs ปาล์ม/มะพร้าว | 05, 17 | 01, 02 |
 | วิเคราะห์ Gap ปลูกเสริม | 07 | 02–06 และ 16/17 เมื่อมี |
 | วงขอบเขตปลูกเสริม | 08 | 07 |
 | QA ปลูกเสริม | 09 | 02–08 และ Optional Outputs |
@@ -84,51 +108,16 @@ Analysis/QA Outputs
 | วิเคราะห์ทางบก/ทางเรือ | 19 | 18 และ Route Layers |
 | จัด Mission ภาคสนาม | 20 | 18–19 |
 
-## Trigger ของ Optional Skill
+## Trigger ของ Skill 21
 
-### Skill 16
+เรียกเป็น Core Step ของปลูกเต็มทุกครั้ง โดยเฉพาะเมื่อพบ:
 
-เรียกเมื่อพบ:
-
-- พื้นขาว–เทา ส้ม–น้ำตาล หรือเลนเปียกต่างกันชัด
-- แอ่งน้ำ จุดน้ำขัง หรือร่องน้ำจำนวนมาก
-- ต้องการเปรียบเทียบ Surface Zone กับอัตรารอด
-
-ห้ามเรียกเพื่อยืนยันความเค็มหรือชนิดดินจากภาพ
-
-### Skill 17
-
-เรียกเมื่อพบ:
-
-- ต้นเดี่ยวทรงดาวหรือรัศมี
-- Crown Center ชัด
-- อาจเห็นลำต้นหรือเงาลำต้น
-
-ต้นจากที่เป็นกอ/ผืนและศูนย์กลางไม่ชัดให้ใช้ Skill 05
-
-### Skill 18
-
-เรียกเมื่อผู้ใช้ต้องการตอบว่า:
-
-- จุดไหนควรเข้าตรวจ
-- จุดไหนเป็นต้นหาย/อัตรารอดต่ำ/ขอบเขตไม่มั่นใจ
-- จุดไหนต้องเก็บ Ground Truth หรือ QA Control
-
-### Skill 19
-
-เรียกเมื่อมี Candidate Inspection Points และต้องพิจารณา:
-
-- ถนน ทางเดิน คันดิน หรือเส้นทางบก
-- คลอง เส้นทางเรือ ท่าเรือ หรือจุดขึ้นฝั่ง
-- เวลา ระยะทาง Tide, Permission และ Safety
-
-### Skill 20
-
-เรียกเมื่อมีผล Priority และ Access แล้ว และต้องการ:
-
-- เลือกจุดจริงตามกำลังทีม
-- รวมจุดไกลเป็น Mission
-- วางแผนรายวันและ Field Checklist
+- จุดแดงกระจายฟุ้งและไม่ตรงพุ่ม
+- จุดบนดินโล่ง ผิวน้ำ ถนน หรือคันดิน
+- เรือนยอดชิดกันแต่ระยะต้นใกล้เคียงกัน
+- ต้นเดิมขนาดใหญ่ปะปน
+- มีจุดปลูกเดิมหรือ Grid ที่ต้องจับคู่กับต้นจริง
+- แปลงนากุ้งมีหลาย Planting Block
 
 ## วิธีอ่าน Output Contract
 
@@ -156,12 +145,13 @@ warnings
 # Routing rules
 
 - งานครบปลูกเสริม: Skill 00
-- งานครบปลูกเต็ม: Skill 10
+- งานครบปลูกเต็ม: Skill 10 และต้องผ่าน Skill 21
+- ตรวจจำนวนต้นปลูกเต็มจากผลที่มีอยู่: Skill 21
 - วางจุดตรวจอย่างเดียว: Skill 18
 - วาง Route อย่างเดียว: Skill 19
 - จัด Mission: Skill 20
 - Skill 16–20 เป็น Optional Shared Skill เรียกเฉพาะเมื่อมี Trigger
-- ห้ามอ่าน Skill ปลูกเต็มเมื่องานเป็นปลูกเสริม หรือกลับกัน โดยไม่มีเหตุผล
+- Skill 21 เป็น Core Validation ของปลูกเต็ม ไม่ใช่ Optional
 - ภาพ Crop ใช้สอนการตีความ ไม่ใช่พิกัดจริง
 - งานจริงต้องรักษา CRS และ Affine Transform
 - AI สร้างได้เฉพาะ Candidate Result และห้ามตั้งสถานะ `approved`
